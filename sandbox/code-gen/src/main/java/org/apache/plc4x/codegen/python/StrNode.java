@@ -35,8 +35,7 @@ public class StrNode extends LineEntryNode {
         this.s = s;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }

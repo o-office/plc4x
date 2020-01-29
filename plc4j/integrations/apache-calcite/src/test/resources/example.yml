@@ -18,8 +18,8 @@
 # ----------------------------------------------------------------------------
 ---
 sources:
-  test: simulated:test
-  test2: simulated:test2
+  test: test:test
+  test2: test:test2
 
 jobs:
   - name: job1

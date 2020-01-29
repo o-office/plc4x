@@ -57,8 +57,7 @@ public class AttributeNode extends LineEntryNode {
         this.value = value;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }

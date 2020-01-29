@@ -19,6 +19,7 @@ under the License.
 package org.apache.plc4x;
 
 import org.apache.calcite.linq4j.Enumerator;
+import org.apache.plc4x.java.scraper.config.JobConfigurationClassicImpl;
 import org.apache.plc4x.java.scraper.config.JobConfigurationImpl;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -48,5 +49,4 @@ class Plc4XBaseTableTest implements WithAssertions {
         assertThat(enumerator.moveNext()).isTrue();
         assertThat(enumerator.current()).contains("value");
     }
-
 }

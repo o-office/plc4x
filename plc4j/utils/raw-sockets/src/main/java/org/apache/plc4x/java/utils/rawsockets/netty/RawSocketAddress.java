@@ -21,7 +21,6 @@ package org.apache.plc4x.java.utils.rawsockets.netty;
 import java.net.SocketAddress;
 
 public class RawSocketAddress extends SocketAddress {
-
     private static final long serialVersionUID = 1L;
 
     public static final int ALL_PROTOCOLS = -1;

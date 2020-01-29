@@ -49,13 +49,11 @@ public class IfStatement extends Statement {
         return blocks;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return null;
     }
 
-    @Override
-    public void write(Generator writer) {
+    @Override public void write(Generator writer) {
         writer.generate(this);
     }
 

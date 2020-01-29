@@ -40,8 +40,7 @@ public class ArgumentsNode extends Node {
         this.args = args;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }

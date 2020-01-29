@@ -20,12 +20,11 @@ package org.apache.plc4x.camel;
 
 import org.apache.plc4x.java.api.PlcConnection;
 import org.apache.plc4x.java.api.authentication.PlcAuthentication;
-import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
 import org.apache.plc4x.java.api.messages.*;
-import org.apache.plc4x.java.spi.messages.DefaultPlcSubscriptionResponse;
-import org.apache.plc4x.java.spi.messages.InternalPlcSubscriptionRequest;
-import org.apache.plc4x.java.spi.messages.PlcSubscriber;
-import org.apache.plc4x.java.api.PlcDriver;
+import org.apache.plc4x.java.base.messages.DefaultPlcSubscriptionResponse;
+import org.apache.plc4x.java.base.messages.InternalPlcSubscriptionRequest;
+import org.apache.plc4x.java.base.messages.PlcSubscriber;
+import org.apache.plc4x.java.spi.PlcDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +52,7 @@ public class MockDriver implements PlcDriver {
     }
 
     @Override
-    public PlcConnection getConnection(String url) throws PlcConnectionException {
+    public PlcConnection connect(String url) {
         // Mock a connection.
         PlcConnection plcConnectionMock = mock(PlcConnection.class, RETURNS_DEEP_STUBS);
         when(plcConnectionMock.getMetadata().canRead()).thenReturn(true);
@@ -97,8 +96,8 @@ public class MockDriver implements PlcDriver {
     }
 
     @Override
-    public PlcConnection getConnection(String url, PlcAuthentication authentication) throws PlcConnectionException {
-        return getConnection(null);
+    public PlcConnection connect(String url, PlcAuthentication authentication) {
+        return connect(null);
     }
 
 }

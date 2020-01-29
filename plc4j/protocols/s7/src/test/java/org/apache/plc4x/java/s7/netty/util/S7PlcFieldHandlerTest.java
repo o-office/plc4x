@@ -20,7 +20,7 @@ package org.apache.plc4x.java.s7.netty.util;
 
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.model.PlcField;
-import org.apache.plc4x.java.api.value.*;
+import org.apache.plc4x.java.base.messages.items.*;
 import org.apache.plc4x.java.s7.netty.model.types.TransportSize;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -277,11 +277,11 @@ class S7PlcFieldHandlerTest {
             for (InputTypes javaType : InputTypes.values()) {
                 Object[] testValues = javaType.values;
 
-                PlcValue value;
+                BaseDefaultFieldItem fieldItem;
                 try {
-                    value = javaType.valueType.getDeclaredConstructor(testValues[0].getClass()).newInstance(testValues[0]);
-                } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException e) {
-                    throw new PlcRuntimeException("Error initializing field class " + javaType.valueType.getSimpleName(), e);
+                    fieldItem = javaType.fieldItemType.getDeclaredConstructor(Array.newInstance(testValues[0].getClass(), 0).getClass()).newInstance(new Object[]{testValues});
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                    throw new PlcRuntimeException("Error initializing field class " + javaType.fieldItemType.getSimpleName(), e);
                 }
 
                 Stream<Arguments> curValues;
@@ -326,34 +326,34 @@ class S7PlcFieldHandlerTest {
     }
 
     enum InputTypes {
-        BOOLEAN(PlcBoolean.class, new Boolean[]{false, true}),
-        BYTE(PlcInteger.class, new Byte[]{(byte) 0, (byte) 42, Byte.MIN_VALUE, Byte.MAX_VALUE}),
-        SHORT(PlcInteger.class, new Short[]{(short) 0, (short) 42, Short.MIN_VALUE, Short.MAX_VALUE}),
-        INTEGER(PlcInteger.class, new Integer[]{0, 42, Integer.MIN_VALUE, Integer.MAX_VALUE}),
-        LONG(PlcLong.class, new Long[]{(long) 0, (long) 42, Long.MIN_VALUE, Long.MAX_VALUE}),
-        FLOAT(PlcFloat.class, new Float[]{(float) 0.0, (float) 42.23, -Float.MAX_VALUE, Float.MAX_VALUE}),
-        DOUBLE(PlcDouble.class, new Double[]{0.0, 42.23, -Double.MAX_VALUE, Double.MAX_VALUE}),
+        BOOLEAN(DefaultBooleanFieldItem.class, new Boolean[]{false, true}),
+        BYTE(DefaultByteFieldItem.class, new Byte[]{(byte) 0, (byte) 42, Byte.MIN_VALUE, Byte.MAX_VALUE}),
+        SHORT(DefaultShortFieldItem.class, new Short[]{(short) 0, (short) 42, Short.MIN_VALUE, Short.MAX_VALUE}),
+        INTEGER(DefaultIntegerFieldItem.class, new Integer[]{0, 42, Integer.MIN_VALUE, Integer.MAX_VALUE}),
+        LONG(DefaultLongFieldItem.class, new Long[]{(long) 0, (long) 42, Long.MIN_VALUE, Long.MAX_VALUE}),
+        FLOAT(DefaultFloatFieldItem.class, new Float[]{(float) 0.0, (float) 42.23, -Float.MAX_VALUE, Float.MAX_VALUE}),
+        DOUBLE(DefaultDoubleFieldItem.class, new Double[]{0.0, 42.23, -Double.MAX_VALUE, Double.MAX_VALUE}),
         // Creates an empty sting as min and a 254 char long string as max.
-        STRING(PlcString.class, new String[]{"Hurz", "", IntStream.range(0, 254).mapToObj(i -> "a").collect(Collectors.joining(""))}),
-        TIME(PlcTime.class, new LocalTime[]{LocalTime.now(), LocalTime.MIDNIGHT, LocalTime.MIN, LocalTime.MAX}),
-        DATE(PlcDate.class, new LocalDate[]{LocalDate.now(), LocalDate.MIN, LocalDate.MAX}),
-        DATETIME(PlcDateTime.class, new LocalDateTime[]{LocalDateTime.now(), LocalDateTime.MIN, LocalDateTime.MAX});
+        STRING(DefaultStringFieldItem.class, new String[]{"Hurz", "", IntStream.range(0, 254).mapToObj(i -> "a").collect(Collectors.joining(""))}),
+        TIME(DefaultLocalTimeFieldItem.class, new LocalTime[]{LocalTime.now(), LocalTime.MIDNIGHT, LocalTime.MIN, LocalTime.MAX}),
+        DATE(DefaultLocalDateFieldItem.class, new LocalDate[]{LocalDate.now(), LocalDate.MIN, LocalDate.MAX}),
+        DATETIME(DefaultLocalDateTimeFieldItem.class, new LocalDateTime[]{LocalDateTime.now(), LocalDateTime.MIN, LocalDateTime.MAX});
 
-        private final Class<? extends PlcValue> valueType;
+        private final Class<? extends BaseDefaultFieldItem> fieldItemType;
         private final Object[] values;
 
-        InputTypes(Class<? extends PlcValue> valueType, Object[] values) {
-            this.valueType = valueType;
+        InputTypes(Class<? extends BaseDefaultFieldItem> fieldItemType, Object[] values) {
+            this.fieldItemType = fieldItemType;
             this.values = values;
         }
     }
 
     private void encode(String name, PlcField field, Object[] values, Set<String> expectedSuccess,
-                        BiFunction<PlcField, Object[], PlcValue> encoder) {
+                        BiFunction<PlcField, Object[], BaseDefaultFieldItem> encoder) {
         boolean success = expectedSuccess.contains(name);
         try {
-            PlcValue plcValue = encoder.apply(field, values);
-            assertNotNull(plcValue, "A PlcValue instance should have been returned for testcase " + name);
+            BaseDefaultFieldItem fieldItem = encoder.apply(field, values);
+            assertNotNull(fieldItem, "A FieldItem instance should have been returned for testcase " + name);
             if(!success) {
                 fail("Expected to fail for testcase " + name);
             }

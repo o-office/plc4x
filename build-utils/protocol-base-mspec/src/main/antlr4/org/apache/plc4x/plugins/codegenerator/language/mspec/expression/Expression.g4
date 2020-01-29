@@ -41,13 +41,10 @@ expression
  | <assoc=right> expression '^' expression              #powerExpression
  | expression op=( '*' | '/' | '%' ) expression         #multExpression
  | expression op=( '+' | '-' ) expression               #addExpression
- | expression op=( '>>' | '<<' ) expression             #bitShiftExpression
  | expression op=( '>=' | '<=' | '>' | '<' ) expression #compExpression
  | expression op=( '==' | '!=' ) expression             #eqExpression
  | expression '&&' expression                           #andExpression
- | expression '&' expression                            #bitAndExpression
  | expression '||' expression                           #orExpression
- | expression '|' expression                            #bitOrExpression
  | expression '?' expression ':' expression             #ifExpression
  | Number                                               #numberExpression
  | Bool                                                 #boolExpression

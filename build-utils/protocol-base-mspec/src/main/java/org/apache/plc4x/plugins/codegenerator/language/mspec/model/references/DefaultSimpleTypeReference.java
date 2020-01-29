@@ -21,14 +21,14 @@ package org.apache.plc4x.plugins.codegenerator.language.mspec.model.references;
 
 import org.apache.plc4x.plugins.codegenerator.types.references.SimpleTypeReference;
 
-public abstract class DefaultSimpleTypeReference implements SimpleTypeReference {
+public class DefaultSimpleTypeReference implements SimpleTypeReference {
 
     private final SimpleBaseType baseType;
-    private final int sizeInBits;
+    private final int size;
 
-    public DefaultSimpleTypeReference(SimpleBaseType baseType, int sizeInBits) {
+    public DefaultSimpleTypeReference(SimpleBaseType baseType, int size) {
         this.baseType = baseType;
-        this.sizeInBits = sizeInBits;
+        this.size = size;
     }
 
     @Override
@@ -37,8 +37,8 @@ public abstract class DefaultSimpleTypeReference implements SimpleTypeReference 
     }
 
     @Override
-    public int getSizeInBits() {
-        return sizeInBits;
+    public int getSize() {
+        return size;
     }
 
 }

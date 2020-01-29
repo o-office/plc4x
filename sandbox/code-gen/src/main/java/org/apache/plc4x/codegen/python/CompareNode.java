@@ -60,8 +60,7 @@ public class CompareNode extends LineEntryNode {
         this.ops = ops;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }

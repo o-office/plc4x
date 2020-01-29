@@ -24,7 +24,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.plc4x.java.ads.model.AdsDataType;
 import org.apache.plc4x.java.api.exceptions.PlcUnsupportedDataTypeException;
-import org.apache.plc4x.java.api.value.*;
+import org.apache.plc4x.java.base.messages.items.*;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
@@ -43,7 +43,7 @@ public class LittleEndianDecoder {
     }
 
     @SuppressWarnings("unchecked")
-    public static PlcValue decodeData(AdsDataType adsDataType, byte[] adsData) {
+    public static BaseDefaultFieldItem decodeData(AdsDataType adsDataType, byte[] adsData) {
         ByteBuf wrappedBuffer = Unpooled.wrappedBuffer(adsData);
         switch (adsDataType) {
             case BIT: {
@@ -52,11 +52,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readUnsignedByte();
                     values.offer(aByte != 0);
                 }
-                if(values.size() == 1) {
-                    return new PlcBoolean(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultBooleanFieldItem(values.toArray(new Boolean[0]));
             }
             case BIT8: {
                 LinkedList<Boolean> values = new LinkedList<>();
@@ -64,11 +60,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readUnsignedByte();
                     values.offer(aByte != 0);
                 }
-                if(values.size() == 1) {
-                    return new PlcBoolean(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultBooleanFieldItem(values.toArray(new Boolean[0]));
             }
             case BITARR8: {
                 LinkedList<Short> values = new LinkedList<>();
@@ -76,11 +68,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readUnsignedByte();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultShortFieldItem(values.toArray(new Short[0]));
             }
             case BITARR16: {
                 LinkedList<Integer> values = new LinkedList<>();
@@ -88,11 +76,7 @@ public class LittleEndianDecoder {
                     int aLong = wrappedBuffer.readUnsignedShortLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultIntegerFieldItem(values.toArray(new Integer[0]));
             }
             case BITARR32: {
                 LinkedList<Long> values = new LinkedList<>();
@@ -100,11 +84,7 @@ public class LittleEndianDecoder {
                     long aLong = wrappedBuffer.readUnsignedIntLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcLong(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case INT8: {
                 LinkedList<Byte> values = new LinkedList<>();
@@ -112,11 +92,7 @@ public class LittleEndianDecoder {
                     byte aLong = wrappedBuffer.readByte();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultByteFieldItem(values.toArray(new Byte[0]));
             }
             case INT16: {
                 LinkedList<Short> values = new LinkedList<>();
@@ -124,11 +100,7 @@ public class LittleEndianDecoder {
                     short aLong = wrappedBuffer.readShortLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultShortFieldItem(values.toArray(new Short[0]));
             }
             case INT32: {
                 LinkedList<Integer> values = new LinkedList<>();
@@ -136,11 +108,7 @@ public class LittleEndianDecoder {
                     int intLE = wrappedBuffer.readIntLE();
                     values.offer(intLE);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultIntegerFieldItem(values.toArray(new Integer[0]));
             }
             case INT64: {
                 LinkedList<Long> values = new LinkedList<>();
@@ -148,11 +116,7 @@ public class LittleEndianDecoder {
                     long longLE = wrappedBuffer.readLongLE();
                     values.offer(longLE);
                 }
-                if(values.size() == 1) {
-                    return new PlcLong(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case UINT8: {
                 LinkedList<Short> values = new LinkedList<>();
@@ -160,11 +124,7 @@ public class LittleEndianDecoder {
                     short aLong = wrappedBuffer.readUnsignedByte();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultShortFieldItem(values.toArray(new Short[0]));
             }
             case UINT16: {
                 LinkedList<Integer> values = new LinkedList<>();
@@ -172,11 +132,7 @@ public class LittleEndianDecoder {
                     int aLong = wrappedBuffer.readUnsignedShortLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultIntegerFieldItem(values.toArray(new Integer[0]));
             }
             case UINT32: {
                 LinkedList<Long> values = new LinkedList<>();
@@ -184,11 +140,7 @@ public class LittleEndianDecoder {
                     long aLong = wrappedBuffer.readUnsignedIntLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcLong(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case ULINT:
             case UINT64: {
@@ -200,11 +152,7 @@ public class LittleEndianDecoder {
                     BigInteger bigInteger = new BigInteger(ArrayUtils.insert(0, bytes, (byte) 0x0));
                     values.offer(bigInteger);
                 }
-                if(values.size() == 1) {
-                    return new PlcBigInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultBigIntegerFieldItem(values.toArray(new BigInteger[0]));
             }
             case FLOAT: {
                 LinkedList<Float> values = new LinkedList<>();
@@ -214,11 +162,7 @@ public class LittleEndianDecoder {
                     //float aLong = wrappedBuffer.readFloatLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcFloat(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultFloatFieldItem(values.toArray(new Float[0]));
             }
             case DOUBLE: {
                 LinkedList<Double> values = new LinkedList<>();
@@ -228,11 +172,7 @@ public class LittleEndianDecoder {
                     //double aLong = wrappedBuffer.readDoubleLE();
                     values.offer(aLong);
                 }
-                if(values.size() == 1) {
-                    return new PlcDouble(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultDoubleFieldItem(values.toArray(new Double[0]));
             }
             case BOOL: {
                 LinkedList<Boolean> values = new LinkedList<>();
@@ -240,11 +180,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readUnsignedByte();
                     values.offer(aByte != 0);
                 }
-                if(values.size() == 1) {
-                    return new PlcBoolean(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultBooleanFieldItem(values.toArray(new Boolean[0]));
             }
             case BYTE: {
                 LinkedList<Short> values = new LinkedList<>();
@@ -252,11 +188,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readUnsignedByte();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultShortFieldItem(values.toArray(new Short[0]));
             }
             case WORD: {
                 LinkedList<Integer> values = new LinkedList<>();
@@ -264,11 +196,7 @@ public class LittleEndianDecoder {
                     int aByte = wrappedBuffer.readUnsignedShortLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultIntegerFieldItem(values.toArray(new Integer[0]));
             }
             case DWORD: {
                 LinkedList<Long> values = new LinkedList<>();
@@ -276,11 +204,7 @@ public class LittleEndianDecoder {
                     long aByte = wrappedBuffer.readUnsignedIntLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcLong(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case SINT: {
                 LinkedList<Byte> values = new LinkedList<>();
@@ -288,11 +212,7 @@ public class LittleEndianDecoder {
                     byte aByte = wrappedBuffer.readByte();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultByteFieldItem(values.toArray(new Byte[0]));
             }
             case USINT: {
                 LinkedList<Short> values = new LinkedList<>();
@@ -300,11 +220,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readUnsignedByte();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultShortFieldItem(values.toArray(new Short[0]));
             }
             case INT: {
                 LinkedList<Short> values = new LinkedList<>();
@@ -312,11 +228,7 @@ public class LittleEndianDecoder {
                     short aByte = wrappedBuffer.readShortLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultShortFieldItem(values.toArray(new Short[0]));
             }
             case UINT: {
                 LinkedList<Integer> values = new LinkedList<>();
@@ -324,11 +236,7 @@ public class LittleEndianDecoder {
                     int aByte = wrappedBuffer.readUnsignedShortLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultIntegerFieldItem(values.toArray(new Integer[0]));
             }
             case DINT: {
                 LinkedList<Integer> values = new LinkedList<>();
@@ -336,11 +244,7 @@ public class LittleEndianDecoder {
                     int aByte = wrappedBuffer.readIntLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcInteger(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultIntegerFieldItem(values.toArray(new Integer[0]));
             }
             case UDINT: {
                 LinkedList<Long> values = new LinkedList<>();
@@ -348,11 +252,7 @@ public class LittleEndianDecoder {
                     long aByte = wrappedBuffer.readUnsignedIntLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcLong(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case LINT: {
                 LinkedList<Long> values = new LinkedList<>();
@@ -360,11 +260,7 @@ public class LittleEndianDecoder {
                     long aByte = wrappedBuffer.readLongLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcLong(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case REAL: {
                 LinkedList<Float> values = new LinkedList<>();
@@ -374,11 +270,7 @@ public class LittleEndianDecoder {
                     //float aByte = wrappedBuffer.readFloatLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcFloat(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultFloatFieldItem(values.toArray(new Float[0]));
             }
             case LREAL: {
                 LinkedList<Double> values = new LinkedList<>();
@@ -388,11 +280,7 @@ public class LittleEndianDecoder {
                     //double aByte = wrappedBuffer.readDoubleLE();
                     values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcDouble(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultDoubleFieldItem(values.toArray(new Double[0]));
             }
             case STRING: {
                 LinkedList<String> values = new LinkedList<>();
@@ -404,23 +292,15 @@ public class LittleEndianDecoder {
                     }
                     values.offer(new String(os.toByteArray()));
                 }
-                if(values.size() == 1) {
-                    return new PlcString(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultStringFieldItem(values.toArray(new String[0]));
             }
             case TIME: {
-                LinkedList<LocalTime> values = new LinkedList<>();
+                LinkedList<Long> values = new LinkedList<>();
                 while (wrappedBuffer.isReadable()) {
                     long aByte = wrappedBuffer.readUnsignedIntLE();
-                    values.offer(LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(aByte)));
+                    values.offer(aByte);
                 }
-                if(values.size() == 1) {
-                    return new PlcTime(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLongFieldItem(values.toArray(new Long[0]));
             }
             case TIME_OF_DAY: {
                 LinkedList<LocalTime> values = new LinkedList<>();
@@ -428,11 +308,7 @@ public class LittleEndianDecoder {
                     long aByte = wrappedBuffer.readUnsignedIntLE();
                     values.offer(LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(aByte)));
                 }
-                if(values.size() == 1) {
-                    return new PlcTime(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLocalTimeFieldItem(values.toArray(new LocalTime[0]));
             }
             case DATE: {
                 LinkedList<LocalDate> values = new LinkedList<>();
@@ -442,11 +318,7 @@ public class LittleEndianDecoder {
                     LocalDateTime localDateTime = LocalDateTime.ofEpochSecond(aByte, 0, ZoneOffset.UTC);
                     values.offer(localDateTime.toLocalDate());
                 }
-                if(values.size() == 1) {
-                    return new PlcDate(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLocalDateFieldItem(values.toArray(new LocalDate[0]));
             }
             case DATE_AND_TIME: {
                 LinkedList<LocalDateTime> values = new LinkedList<>();
@@ -456,11 +328,7 @@ public class LittleEndianDecoder {
                     LocalDateTime localDateTime = LocalDateTime.ofEpochSecond(aByte, 0, ZoneOffset.UTC);
                     values.offer(localDateTime);
                 }
-                if(values.size() == 1) {
-                    return new PlcDateTime(values.get(0));
-                } else {
-                    return new PlcList(values);
-                }
+                return new DefaultLocalDateTimeFieldItem(values.toArray(new LocalDateTime[0]));
             }
             case ARRAY: {
                 throw new NotImplementedException("not implemented yet " + adsDataType);

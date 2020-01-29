@@ -33,13 +33,11 @@ public class LineComment implements Node {
         return comment;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return null;
     }
 
-    @Override
-    public void write(Generator writer) {
+    @Override public void write(Generator writer) {
         writer.generateComment(comment);
     }
 }

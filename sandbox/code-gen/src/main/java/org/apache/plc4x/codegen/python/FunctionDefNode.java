@@ -73,8 +73,7 @@ public class FunctionDefNode extends LineEntryNode {
         this.returns = returns;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }

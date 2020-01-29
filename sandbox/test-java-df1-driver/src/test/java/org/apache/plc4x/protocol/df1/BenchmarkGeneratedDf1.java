@@ -19,6 +19,11 @@
 
 package org.apache.plc4x.protocol.df1;
 
+import com.fazecast.jSerialComm.SerialPort;
+import org.apache.plc4x.java.df1.*;
+import org.apache.plc4x.java.utils.ReadBuffer;
+import org.apache.plc4x.java.utils.WriteBuffer;
+
 public class BenchmarkGeneratedDf1 {
 
     public static void main(String[] args) throws Exception {

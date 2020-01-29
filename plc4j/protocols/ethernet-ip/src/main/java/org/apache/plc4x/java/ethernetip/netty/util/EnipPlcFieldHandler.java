@@ -21,8 +21,8 @@ package org.apache.plc4x.java.ethernetip.netty.util;
 import org.apache.plc4x.java.api.exceptions.PlcInvalidFieldException;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.model.PlcField;
-import org.apache.plc4x.java.api.value.PlcValue;
-import org.apache.plc4x.java.spi.connection.DefaultPlcFieldHandler;
+import org.apache.plc4x.java.base.connection.DefaultPlcFieldHandler;
+import org.apache.plc4x.java.base.messages.items.BaseDefaultFieldItem;
 import org.apache.plc4x.java.ethernetip.model.EtherNetIpField;
 
 public class EnipPlcFieldHandler extends DefaultPlcFieldHandler {
@@ -36,73 +36,73 @@ public class EnipPlcFieldHandler extends DefaultPlcFieldHandler {
     }
 
     @Override
-    public PlcValue encodeBoolean(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeBoolean(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeByte(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeByte(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeShort(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeShort(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeInteger(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeInteger(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeBigInteger(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeBigInteger(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeLong(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeLong(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeFloat(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeFloat(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeDouble(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeDouble(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeString(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeString(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeTime(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeTime(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeDate(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeDate(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }
 
     @Override
-    public PlcValue encodeDateTime(PlcField field, Object[] values) {
+    public BaseDefaultFieldItem encodeDateTime(PlcField field, Object[] values) {
         EtherNetIpField enipField = (EtherNetIpField) field;
         throw new PlcRuntimeException("Invalid encoder for type " + enipField);
     }

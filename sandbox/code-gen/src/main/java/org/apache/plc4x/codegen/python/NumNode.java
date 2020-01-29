@@ -35,8 +35,7 @@ public class NumNode extends LineEntryNode {
         this.n = n;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }

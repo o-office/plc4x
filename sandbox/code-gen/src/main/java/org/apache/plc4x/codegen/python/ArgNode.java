@@ -46,8 +46,7 @@ public class ArgNode extends LineEntryNode {
         this.arg = arg;
     }
 
-    @Override
-    public <T> T accept(NodeVisitor<T> visitor) {
+    @Override public <T> T accept(NodeVisitor<T> visitor) {
         return visitor.visit(this);
     }
 }
