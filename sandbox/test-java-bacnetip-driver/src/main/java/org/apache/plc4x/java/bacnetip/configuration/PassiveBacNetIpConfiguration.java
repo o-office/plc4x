@@ -51,7 +51,7 @@ public class PassiveBacNetIpConfiguration implements Configuration, UdpTransport
 
     @Override
     public float getReplaySpeedFactor() {
-        return 1.0F;
+        return 0;
     }
 
     /**
