@@ -125,6 +125,9 @@ public class Plc4xNettyWrapper<T> extends MessageToMessageCodec<T, Object> {
             // Check if the handler can still be used or should be removed
             if (registration.getTimeout().isBefore(Instant.now())) {
                 logger.debug("Removing {} as its timed out (was set till {})", registration, registration.getTimeout());
+                // Call callback
+                registration.handleTimeout();
+                // Remove
                 iter.remove();
                 continue;
             }

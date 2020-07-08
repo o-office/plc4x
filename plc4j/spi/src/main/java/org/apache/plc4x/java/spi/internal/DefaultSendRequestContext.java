@@ -120,11 +120,6 @@ public class DefaultSendRequestContext<T> implements ConversationContext.SendReq
         if (expectClazz == null) {
             throw new ConversationContext.PlcWiringException("expectResponse must be called before first unwrap");
         }
-        if (onTimeoutConsumer == null) {
-            onTimeoutConsumer = e -> {
-                // NOOP
-            };
-        }
         commands.addLast(Either.left(unwrapper));
         return new DefaultSendRequestContext<R>(commands, timeout, finisher, request, context, expectClazz, packetConsumer, onTimeoutConsumer, errorConsumer);
     }

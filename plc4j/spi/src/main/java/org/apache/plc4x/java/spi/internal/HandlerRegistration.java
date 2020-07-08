@@ -79,6 +79,10 @@ public class HandlerRegistration {
         return timeout;
     }
 
+    public void handleTimeout() {
+        this.onTimeoutConsumer.accept(new TimeoutException("Timed out while waiting for response"));
+    }
+
     @Override
     public String toString() {
         return "HandlerRegistration#" + id;

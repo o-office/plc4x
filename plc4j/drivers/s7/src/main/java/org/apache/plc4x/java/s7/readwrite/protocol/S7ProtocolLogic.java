@@ -67,6 +67,7 @@ import org.apache.plc4x.java.s7.readwrite.SzlDataTreeItem;
 import org.apache.plc4x.java.s7.readwrite.SzlId;
 import org.apache.plc4x.java.s7.readwrite.TPKTPacket;
 import org.apache.plc4x.java.s7.readwrite.context.S7DriverContext;
+import org.apache.plc4x.java.s7.readwrite.field.S7Field;
 import org.apache.plc4x.java.s7.readwrite.io.DataItemIO;
 import org.apache.plc4x.java.s7.readwrite.types.COTPProtocolClass;
 import org.apache.plc4x.java.s7.readwrite.types.COTPTpduSize;
@@ -75,7 +76,6 @@ import org.apache.plc4x.java.s7.readwrite.types.DataTransportSize;
 import org.apache.plc4x.java.s7.readwrite.types.S7ControllerType;
 import org.apache.plc4x.java.s7.readwrite.types.SzlModuleTypeClass;
 import org.apache.plc4x.java.s7.readwrite.types.SzlSublist;
-import org.apache.plc4x.java.s7.readwrite.field.S7Field;
 import org.apache.plc4x.java.spi.ConversationContext;
 import org.apache.plc4x.java.spi.Plc4xProtocolBase;
 import org.apache.plc4x.java.spi.context.DriverContext;
@@ -96,8 +96,10 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -139,11 +141,19 @@ public class S7ProtocolLogic extends Plc4xProtocolBase<TPKTPacket> {
             .expectResponse(TPKTPacket.class, REQUEST_TIMEOUT)
             .check(p -> p.getPayload() instanceof COTPPacketConnectionResponse)
             .unwrap(p -> (COTPPacketConnectionResponse) p.getPayload())
+            .onTimeout(e -> {
+                logger.warn("Timeout during Connection establishing, closing channel...");
+                context.getChannel().close();
+            })
             .handle(cotpPacketConnectionResponse -> {
                 logger.debug("Got COTP Connection Response");
                 logger.debug("Sending S7 Connection Request");
                 context.sendRequest(createS7ConnectionRequest(cotpPacketConnectionResponse))
                     .expectResponse(TPKTPacket.class, REQUEST_TIMEOUT)
+                    .onTimeout(e -> {
+                        logger.warn("Timeout during Connection establishing, closing channel...");
+                        context.getChannel().close();
+                    })
                     .unwrap(TPKTPacket::getPayload)
                     .only(COTPPacketData.class)
                     .unwrap(COTPPacket::getPayload)
@@ -177,6 +187,10 @@ public class S7ProtocolLogic extends Plc4xProtocolBase<TPKTPacket> {
                         TPKTPacket tpktPacket = createIdentifyRemoteMessage();
                         context.sendRequest(tpktPacket)
                             .expectResponse(TPKTPacket.class, REQUEST_TIMEOUT)
+                            .onTimeout(e -> {
+                                logger.warn("Timeout during Connection establishing, closing channel...");
+                                context.getChannel().close();
+                            })
                             .check(p -> p.getPayload() instanceof COTPPacketData)
                             .unwrap(p -> ((COTPPacketData) p.getPayload()))
                             .check(p -> p.getPayload() instanceof S7MessageUserData)
@@ -240,8 +254,14 @@ public class S7ProtocolLogic extends Plc4xProtocolBase<TPKTPacket> {
         RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
         transaction.submit(() -> context.sendRequest(tpktPacket)
             .expectResponse(TPKTPacket.class, REQUEST_TIMEOUT)
-            .onTimeout(future::completeExceptionally)
-            .onError((p, e) -> future.completeExceptionally(e))
+            .onTimeout((e) -> {
+                future.completeExceptionally(e);
+                transaction.endRequest();
+            })
+            .onError((p, e) -> {
+                future.completeExceptionally(e);
+                transaction.endRequest();
+            })
             .check(p -> p.getPayload() instanceof COTPPacketData)
             .unwrap(p -> (COTPPacketData) p.getPayload())
             .check(p -> p.getPayload() instanceof S7MessageResponseData)
@@ -297,6 +317,14 @@ public class S7ProtocolLogic extends Plc4xProtocolBase<TPKTPacket> {
                 transaction.endRequest();
             }));
         return future;
+    }
+
+    /**
+     * This method is only called when there is no Response Handler.
+     */
+    @Override
+    protected void decode(ConversationContext<TPKTPacket> context, TPKTPacket msg) throws Exception {
+        throw new IllegalStateException("This should not happen!");
     }
 
     @Override
