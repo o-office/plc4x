@@ -21,10 +21,10 @@ package org.apache.plc4x.java.can;
 
 import org.apache.plc4x.test.parserserializer.ParserSerializerTestsuiteRunner;
 
-public class CANOpenTest extends ParserSerializerTestsuiteRunner {
+public class CANOpenPayloadTest extends ParserSerializerTestsuiteRunner {
 
-    public CANOpenTest() {
-        super("/testsuite/CANOpenTestSuite.xml");
+    public CANOpenPayloadTest() {
+        super("/testsuite/CANOpenPayloadTestSuite.xml");
     }
 
 }

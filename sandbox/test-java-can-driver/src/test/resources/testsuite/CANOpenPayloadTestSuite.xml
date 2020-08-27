@@ -22,11 +22,14 @@
   <name>Tests of socketcan/CANopen frames.</name>
 
   <testcase>
-    <name>Network heartbeat frame: 728#05</name>
-    <raw>280700000100000005</raw>
-    <root-type>CANOpenFrame</root-type>
+    <name>Network heartbeat payload: 0000</name>
+    <raw>0000</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>NMT</arg1>
+    </parser-arguments>
     <xml>
-      <SocketCANFrame className="org.apache.plc4x.java.canopen.readwrite.CANOpenFrame">
+      <SocketCANFrame className="org.apache.plc4x.java.canopen.readwrite.CANOpenPayload">
         <function>15</function>
         <identifier>5</identifier>
         <extended>false</extended>

@@ -17,28 +17,35 @@
  * under the License.
  */
 
-[type 'CANOpenFrame'
-    [enum CANOpenService 'function']
-    [simple int 11 'identifier']
-    [reserved int 9 '0x0'] // filling gap used by extended frame, and extended marker which should always be 0
-    [simple bit 'remote']
-    [simple bit 'error']
-    [reserved int 5 '0x0']  // filling gap used by extended frame
-    [implicit uint 8 'size' 'COUNT(payload)']
-    [reserved uint 8 '0x0'] // in case of fd frame these are flags
-    [reserved uint 8 '0x0'] // padding 1
-    [reserved uint 8 '0x0'] // padding 2
-    [simple CANOpenPayload 'payload' ['function', 'size']]
-]
-
 [enum uint 4 'CANOpenService'
-    ['0b1110' NMT]
+    ['0x00' BROADCAST]
+    ['0x07' NMT]
 ]
 
-[discriminatedType 'CANOpenPayload' [CANOpenService 'function', uint 8 'size']
+[enum uint 8 'NMTStateRequest'
+    ['0x01' OPERATIONAL]
+    ['0x02' STOP]
+    ['0x80' PRE_OPERATIONAL]
+    ['0x81' RESET_NODE]
+    ['0x82' RESET_COMMUNICATION]
+]
+
+[enum uint 8 'NMTState'
+    ['0x00' BOOTED_UP]
+    ['0x04' STOPPED]
+    ['0x05' OPERATIONAL]
+    ['0x7f' PRE_OPERATIONAL]
+]
+
+[discriminatedType 'CANOpenPayload' [CANOpenService 'function']
     [typeSwitch 'function'
-        ['CANOpenService.NMT' CANOpenNetworkPayload [uint 8 'size']
-            [array int 8 'data' COUNT 'size']
+        ['CANOpenService.BROADCAST' CANOpenBroadcastPayload
+            [enum NMTStateRequest 'request']
+            [reserved uint 1 '0x0']
+            [simple uint 7 'node']
+        ]
+        ['CANOpenService.NMT' CANOpenNetworkPayload
+            [enum NMTState 'state']
         ]
     ]
 ]
