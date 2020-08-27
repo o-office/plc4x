@@ -1,6 +1,6 @@
 package org.apache.plc4x.java.can.helper;
 
-import org.apache.plc4x.java.can.readwrite.SocketCANFrame;
+import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
 import org.apache.plc4x.java.spi.generation.ParseException;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
 

@@ -16,4 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-org.apache.plc4x.protocol.can.CANProtocol
+org.apache.plc4x.protocol.can.CAN20AProtocol
+org.apache.plc4x.protocol.can.SocketCANProtocol
+org.apache.plc4x.protocol.can.CANOpenProtocol

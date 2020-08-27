@@ -18,7 +18,7 @@ under the License.
 */
 package org.apache.plc4x.java.can.protocol;
 
-import org.apache.plc4x.java.can.readwrite.SocketCANFrame;
+import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
 import org.apache.plc4x.java.spi.ConversationContext;
 import org.apache.plc4x.java.spi.Plc4xProtocolBase;
 import org.slf4j.Logger;

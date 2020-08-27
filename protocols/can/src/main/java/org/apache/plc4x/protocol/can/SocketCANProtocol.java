@@ -27,16 +27,16 @@ import org.apache.plc4x.plugins.codegenerator.types.exceptions.GenerationExcepti
 import java.io.InputStream;
 import java.util.Map;
 
-public class CANProtocol implements Protocol {
+public class SocketCANProtocol implements Protocol {
 
     @Override
     public String getName() {
-        return "can";
+        return "socketcan";
     }
 
     @Override
     public Map<String, TypeDefinition> getTypeDefinitions() throws GenerationException {
-        InputStream schemaInputStream = CANProtocol.class.getResourceAsStream("/protocols/can/can.mspec");
+        InputStream schemaInputStream = SocketCANProtocol.class.getResourceAsStream("/protocols/can/socketcan.mspec");
         if(schemaInputStream == null) {
             throw new GenerationException("Error loading message-format schema for protocol '" + getName() + "'");
         }

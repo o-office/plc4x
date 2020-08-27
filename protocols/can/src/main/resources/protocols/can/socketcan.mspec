@@ -17,41 +17,6 @@
  * under the License.
  */
 
-[type 'CANFrame'
-    [simple CANHeader 'header']
-    [simple uint 11 'identifier']
-    [simple bit 'extended']
-    [simple bit 'remote']
-    [simple bit 'error']
-]
-
-[type 'CANHeader'
-    [simple uint 11 'identifier']
-    [simple bit 'extended']
-    [simple bit 'remote']
-    [simple bit 'error']
-
-]
-
-/* These are structures defined in linux kernel, provided here just for information purposes
-struct can_frame {
-  canid_t can_id;  // 32 bit CAN_ID + EFF/RTR/ERR flags
-  __u8    can_dlc; // frame payload length in byte (0 .. 8)
-  __u8    __pad;   // padding
-  __u8    __res0;  // reserved / padding
-  __u8    __res1;  // reserved / padding
-  __u8    data[8] __attribute__((aligned(8)));
-};
-struct canfd_frame {
-  canid_t can_id;  // 32 bit CAN_ID + EFF/RTR/ERR flags
-  __u8    len;     // frame payload length in byte (0 .. 64)
-  __u8    flags;   // additional flags for CAN FD
-  __u8    __res0;  // reserved / padding
-  __u8    __res1;  // reserved / padding
-  __u8    data[64] __attribute__((aligned(8)));
-};
-*/
-
 [type 'BrokenSocketCANFrame'
     [discriminator bit 'extended']
     [simple bit 'remote']
@@ -107,30 +72,4 @@ struct canfd_frame {
     [reserved uint 8 '0x0'] // padding 1
     [reserved uint 8 '0x0'] // padding 2
     [array int 8 'data' COUNT 'size']
-]
-
-[type 'SimplifiedSocketCANFrame'
-    [simple bit 'extended']
-    [simple bit 'remote']
-    [simple bit 'error']
-    [simple uint 29 'identifier']
-    //implicit uint 8 'size' 'COUNT(data)'
-    [reserved uint 8 '0x0'] // flags
-    [reserved uint 8 '0x0'] // padding
-    [reserved uint 8 '0x0'] // padding
-    //array int 8 'data' COUNT 'size'
-]
-
-[enum 'CanOpenNMTCommand'
-    ['0x01', START_DEVICE]
-    ['0x02', STOP_DEVICE]
-    ['0x80', PRE_START]
-    ['0x81', RESET_DEVICE]
-    ['0x82', RESET_COMMUNICATION]
-]
-
-[dataIo 'CANOpenFrame' [uint 4 'function', uint 7 nodeId, int 8 'data']
-    [discriminator uint 4 'afunction']
-    [typeSwitch 'afunction'
-    ]
 ]

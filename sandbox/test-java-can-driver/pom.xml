@@ -37,13 +37,25 @@
         <artifactId>plc4x-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>test</id>
+            <id>socketcan</id>
             <phase>generate-sources</phase>
             <goals>
               <goal>generate-driver</goal>
             </goals>
             <configuration>
-              <protocolName>can</protocolName>
+              <protocolName>socketcan</protocolName>
+              <languageName>java</languageName>
+              <outputFlavor>read-write</outputFlavor>
+            </configuration>
+          </execution>
+          <execution>
+            <id>canopen</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate-driver</goal>
+            </goals>
+            <configuration>
+              <protocolName>canopen</protocolName>
               <languageName>java</languageName>
               <outputFlavor>read-write</outputFlavor>
             </configuration>

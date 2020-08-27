@@ -26,7 +26,7 @@
     <raw>a1050000080000001122334455667788</raw>
     <root-type>SocketCANFrame</root-type>
     <xml>
-      <SocketCANFrame className="org.apache.plc4x.java.can.readwrite.SocketCANFrame">
+      <SocketCANFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame">
         <rawId>1441</rawId>
         <data>ESIzRFVmd4g=</data>
         <identifier>1441</identifier>
@@ -42,7 +42,7 @@
     <raw>a105000000000000</raw>
     <root-type>SocketCANFrame</root-type>
     <xml>
-      <SocketCANFrame className="org.apache.plc4x.java.can.readwrite.SocketCANFrame">
+      <SocketCANFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame">
         <rawId>1441</rawId>
         <data></data>
         <identifier>1441</identifier>
@@ -58,7 +58,7 @@
     <raw>a105004000000000</raw>
     <root-type>SocketCANFrame</root-type>
     <xml>
-      <SocketCANFrame className="org.apache.plc4x.java.can.readwrite.SocketCANFrame">
+      <SocketCANFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame">
         <rawId>1073743265</rawId>
         <data></data>
         <identifier>1441</identifier>

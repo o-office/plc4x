@@ -26,7 +26,7 @@
     <raw>a1050000080000001122334455667788</raw>
     <root-type>SocketCAN20AFrame</root-type>
     <xml>
-      <SocketCAN20AFrame className="org.apache.plc4x.java.can.readwrite.SocketCAN20AFrame">
+      <SocketCAN20AFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCAN20AFrame">
         <identifier>1441</identifier>
         <extended>false</extended>
         <remote>false</remote>
@@ -41,7 +41,7 @@
     <raw>a105000000000000</raw>
     <root-type>SocketCAN20AFrame</root-type>
     <xml>
-      <SocketCAN20AFrame className="org.apache.plc4x.java.can.readwrite.SocketCAN20AFrame">
+      <SocketCAN20AFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCAN20AFrame">
         <identifier>1441</identifier>
         <extended>false</extended>
         <remote>false</remote>
@@ -56,7 +56,7 @@
     <raw>a105004000000000</raw>
     <root-type>SocketCAN20AFrame</root-type>
     <xml>
-      <SocketCAN20AFrame className="org.apache.plc4x.java.can.readwrite.SocketCAN20AFrame">
+      <SocketCAN20AFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCAN20AFrame">
         <identifier>1441</identifier>
         <extended>false</extended>
         <remote>true</remote>
