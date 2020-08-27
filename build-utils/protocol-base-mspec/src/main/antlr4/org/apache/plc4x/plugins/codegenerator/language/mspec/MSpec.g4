@@ -54,9 +54,14 @@ field
  | optionalField
  | paddingField
  | reservedField
+ | reversedField
  | simpleField
  | typeSwitchField
  | virtualField
+ ;
+
+reversedField
+ : 'reverse' size=INTEGER_LITERAL LBRACKET fieldDefinition+ RBRACKET
  ;
 
 abstractField

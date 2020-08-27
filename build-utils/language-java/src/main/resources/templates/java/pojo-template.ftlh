@@ -36,6 +36,7 @@
 <#-- @ftlvariable name="optionalField" type="org.apache.plc4x.plugins.codegenerator.types.fields.OptionalField" -->
 <#-- @ftlvariable name="paddingField" type="org.apache.plc4x.plugins.codegenerator.types.fields.PaddingField" -->
 <#-- @ftlvariable name="reservedField" type="org.apache.plc4x.plugins.codegenerator.types.fields.ReservedField" -->
+<#-- @ftlvariable name="reverseField" type="org.apache.plc4x.plugins.codegenerator.types.fields.ReverseField" -->
 <#-- @ftlvariable name="simpleField" type="org.apache.plc4x.plugins.codegenerator.types.fields.SimpleField" -->
 <#-- @ftlvariable name="switchField" type="org.apache.plc4x.plugins.codegenerator.types.fields.SwitchField" -->
 <#-- @ftlvariable name="virtualField" type="org.apache.plc4x.plugins.codegenerator.types.fields.VirtualField" -->
@@ -78,6 +79,124 @@ import org.apache.plc4x.java.spi.generation.MessageIO;
 import java.time.*;
 import java.util.*;
 import java.math.BigInteger;
+
+<#macro fieldTempalte field>
+<#switch field.typeName>
+    <#case "array">
+        <#assign arrayField = field>
+
+        // Array field
+        if(${arrayField.name} != null) {
+        <#if helper.isSimpleTypeReference(arrayField.type)>
+            <#assign simpleTypeReference = arrayField.type>
+            lengthInBits += ${simpleTypeReference.sizeInBits} * ${arrayField.name}.length;
+        <#else>
+            for(Message element : ${arrayField.name}) {
+            lengthInBits += element.getLengthInBits();
+            }
+        </#if>
+        }
+        <#break>
+    <#case "checksum">
+        <#assign checksumField = field>
+        <#assign simpleTypeReference = checksumField.type>
+
+        // Checksum Field (checksum)
+        lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#break>
+    <#case "const">
+        <#assign constField = field>
+        <#assign simpleTypeReference = constField.type>
+
+        // Const Field (${constField.name})
+        lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#break>
+    <#case "discriminator">
+        <#assign discriminatorField = field>
+        <#assign simpleTypeReference = discriminatorField.type>
+
+        // Discriminator Field (${discriminatorField.name})
+        lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#break>
+    <#case "enum">
+        <#assign enumField = field>
+
+        // Enum Field (${enumField.name})
+        lengthInBits += ${helper.getEnumBaseTypeReference(enumField.type).sizeInBits};
+        <#break>
+    <#case "implicit">
+        <#assign implicitField = field>
+        <#assign simpleTypeReference = implicitField.type>
+
+        // Implicit Field (${implicitField.name})
+        lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#break>
+    <#case "manualArray">
+        <#assign manualArrayField = field>
+
+        // Manual Array Field (${manualArrayField.name})
+        lengthInBits += ${helper.toParseExpression(manualArrayField, manualArrayField.lengthExpression, type.parserArguments)} * 8;
+        <#break>
+    <#case "manual">
+        <#assign manualField = field>
+
+        // Manual Field (${manualField.name})
+        lengthInBits += ${helper.toParseExpression(manualField, manualField.lengthExpression, type.parserArguments)} * 8;
+        <#break>
+    <#case "optional">
+        <#assign optionalField = field>
+
+        // Optional Field (${optionalField.name})
+        if(${optionalField.name} != null) {
+        <#if helper.isSimpleTypeReference(optionalField.type)>
+            <#assign simpleTypeReference = optionalField.type>
+            lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#else>
+            lengthInBits += ${optionalField.name}.getLengthInBits();
+        </#if>
+        }
+        <#break>
+    <#case "padding">
+        <#assign paddingField = field>
+        <#assign simpleTypeReference = paddingField.type>
+
+        // Padding Field (padding)
+    <#-- We're replacing the "lastItem" with 'false' here as the item itself can't know if it is the last -->
+        if((boolean) (${helper.toParseExpression(paddingField, paddingField.paddingCondition, type.parserArguments)?replace("lastItem", "false")})) {
+        lengthInBits += ${simpleTypeReference.sizeInBits};
+        }
+        <#break>
+    <#case "reserved">
+        <#assign reservedField = field>
+        <#assign simpleTypeReference = reservedField.type>
+
+        // Reserved Field (reserved)
+        lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#break>
+    <#case "simple">
+        <#assign simpleField = field>
+
+        // Simple field (${simpleField.name})
+        <#if helper.isSimpleTypeReference(simpleField.type)>
+            <#assign simpleTypeReference = simpleField.type>
+            lengthInBits += ${simpleTypeReference.sizeInBits};
+        <#else>
+            lengthInBits += ${simpleField.name}.getLengthInBits();
+        </#if>
+        <#break>
+    <#case "switch">
+        <#assign switchField = field>
+
+        // Length of sub-type elements will be added by sub-type...
+        <#break>
+    <#case "virtual">
+        <#assign virtualField = field>
+
+        // A virtual field doesn't have any in- or output.
+        <#break>
+</#switch>
+</#macro>
+
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "className")
 public<#if helper.isDiscriminatedParentTypeDefinition()> abstract</#if> class ${type.name}<#if type.parentType??> extends ${type.parentType.name}</#if> implements Message {
@@ -170,120 +289,7 @@ public<#if helper.isDiscriminatedParentTypeDefinition()> abstract</#if> class ${
     public int getLengthInBits() {
         int lengthInBits = <#if type.parentType??>super.getLengthInBits()<#else>0</#if>;
 <#list type.fields as field>
-<#switch field.typeName>
-    <#case "array">
-        <#assign arrayField = field>
-
-        // Array field
-        if(${arrayField.name} != null) {
-        <#if helper.isSimpleTypeReference(arrayField.type)>
-            <#assign simpleTypeReference = arrayField.type>
-            lengthInBits += ${simpleTypeReference.sizeInBits} * ${arrayField.name}.length;
-        <#else>
-            for(Message element : ${arrayField.name}) {
-                lengthInBits += element.getLengthInBits();
-            }
-        </#if>
-        }
-        <#break>
-    <#case "checksum">
-        <#assign checksumField = field>
-        <#assign simpleTypeReference = checksumField.type>
-
-        // Checksum Field (checksum)
-        lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#break>
-    <#case "const">
-        <#assign constField = field>
-        <#assign simpleTypeReference = constField.type>
-
-        // Const Field (${constField.name})
-        lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#break>
-    <#case "discriminator">
-        <#assign discriminatorField = field>
-        <#assign simpleTypeReference = discriminatorField.type>
-
-        // Discriminator Field (${discriminatorField.name})
-        lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#break>
-    <#case "enum">
-        <#assign enumField = field>
-
-        // Enum Field (${enumField.name})
-        lengthInBits += ${helper.getEnumBaseTypeReference(enumField.type).sizeInBits};
-        <#break>
-    <#case "implicit">
-        <#assign implicitField = field>
-        <#assign simpleTypeReference = implicitField.type>
-
-        // Implicit Field (${implicitField.name})
-        lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#break>
-    <#case "manualArray">
-        <#assign manualArrayField = field>
-
-        // Manual Array Field (${manualArrayField.name})
-        lengthInBits += ${helper.toParseExpression(manualArrayField, manualArrayField.lengthExpression, type.parserArguments)} * 8;
-        <#break>
-    <#case "manual">
-        <#assign manualField = field>
-
-        // Manual Field (${manualField.name})
-        lengthInBits += ${helper.toParseExpression(manualField, manualField.lengthExpression, type.parserArguments)} * 8;
-        <#break>
-    <#case "optional">
-        <#assign optionalField = field>
-
-        // Optional Field (${optionalField.name})
-        if(${optionalField.name} != null) {
-        <#if helper.isSimpleTypeReference(optionalField.type)>
-            <#assign simpleTypeReference = optionalField.type>
-            lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#else>
-            lengthInBits += ${optionalField.name}.getLengthInBits();
-        </#if>
-        }
-        <#break>
-    <#case "padding">
-        <#assign paddingField = field>
-        <#assign simpleTypeReference = paddingField.type>
-
-        // Padding Field (padding)
-        <#-- We're replacing the "lastItem" with 'false' here as the item itself can't know if it is the last -->
-        if((boolean) (${helper.toParseExpression(paddingField, paddingField.paddingCondition, type.parserArguments)?replace("lastItem", "false")})) {
-            lengthInBits += ${simpleTypeReference.sizeInBits};
-        }
-        <#break>
-    <#case "reserved">
-        <#assign reservedField = field>
-        <#assign simpleTypeReference = reservedField.type>
-
-        // Reserved Field (reserved)
-        lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#break>
-    <#case "simple">
-        <#assign simpleField = field>
-
-        // Simple field (${simpleField.name})
-        <#if helper.isSimpleTypeReference(simpleField.type)>
-            <#assign simpleTypeReference = simpleField.type>
-        lengthInBits += ${simpleTypeReference.sizeInBits};
-        <#else>
-        lengthInBits += ${simpleField.name}.getLengthInBits();
-        </#if>
-        <#break>
-    <#case "switch">
-        <#assign switchField = field>
-
-        // Length of sub-type elements will be added by sub-type...
-        <#break>
-    <#case "virtual">
-        <#assign virtualField = field>
-
-        // A virtual field doesn't have any in- or output.
-        <#break>
-</#switch>
+    <@fieldTemplate field=field />
 </#list>
 
         return lengthInBits;

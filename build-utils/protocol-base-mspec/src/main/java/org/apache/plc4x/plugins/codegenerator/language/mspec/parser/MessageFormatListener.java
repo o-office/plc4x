@@ -30,10 +30,7 @@ import org.apache.plc4x.plugins.codegenerator.types.definitions.Argument;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.DiscriminatedComplexTypeDefinition;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.TypeDefinition;
 import org.apache.plc4x.plugins.codegenerator.types.enums.EnumValue;
-import org.apache.plc4x.plugins.codegenerator.types.fields.ArrayField;
-import org.apache.plc4x.plugins.codegenerator.types.fields.Field;
-import org.apache.plc4x.plugins.codegenerator.types.fields.ManualArrayField;
-import org.apache.plc4x.plugins.codegenerator.types.fields.SwitchField;
+import org.apache.plc4x.plugins.codegenerator.types.fields.*;
 import org.apache.plc4x.plugins.codegenerator.types.references.ComplexTypeReference;
 import org.apache.plc4x.plugins.codegenerator.types.references.SimpleTypeReference;
 import org.apache.plc4x.plugins.codegenerator.types.references.TypeReference;
@@ -136,6 +133,37 @@ public class MessageFormatListener extends MSpecBaseListener {
             }
             parserContexts.pop();
         }
+    }
+
+    @Override
+    public void enterReversedField(MSpecParser.ReversedFieldContext ctx) {
+        if (ctx.size == null) {
+            throw new RuntimeException("Size of reversed block must be explicitly declared");
+        }
+
+        int size = Integer.parseInt(ctx.size.getText());
+        DefaultReverseField field = new DefaultReverseField(size);
+        if (parserContexts.peek() != null) {
+            parserContexts.peek().add(field);
+        }
+    }
+
+    @Override
+    public void exitReversedField(MSpecParser.ReversedFieldContext ctx) {
+        List<Field> fields = new ArrayList<>();
+        List<Field> context = parserContexts.peek();
+        for (int index = context.size() - 1; index > 0; index--) {
+            Field field = context.get(index);
+            if (field instanceof ReservedField) {
+                // make sure fields are passed back in declaration order and not in read order
+                Collections.reverse(fields);
+                DefaultReverseField reversedField = (DefaultReverseField) field;
+                fields.forEach(reversedField::addField);
+                break;
+            }
+            fields.add(context.remove(index));
+        }
+
     }
 
     @Override

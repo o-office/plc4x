@@ -37,6 +37,22 @@
     [simple     uint       32       'length']
 ]
 
+[type 'AmsTcpHeader'
+    // These bytes must be set to 0.
+    // This array contains the length of the data packet.
+    // It consists of the AMS-Header and the enclosed ADS data. The unit is bytes.
+    [simple     uint       32       'length']
+]
+
+[type 'mixture'
+    [simple uint 8 'foo1']
+    [reverse 16 [
+        [simple uint 8 'foo2']
+        [simple uint 8 'bar']
+    ]]
+    [simple uint 8 'foo3']
+]
+
 ////////////////////////////////////////////////////////////////
 // AMS/Serial Packet
 ////////////////////////////////////////////////////////////////

@@ -45,6 +45,10 @@ public class ReadBuffer {
         this.totalBytes = input.length;
     }
 
+    public ReadBuffer flip(int size) {
+        return new ReadBuffer(getBytes(getPos(), size / 8));
+    }
+
     public int getPos() {
         return (int) bi.getPos();
     }

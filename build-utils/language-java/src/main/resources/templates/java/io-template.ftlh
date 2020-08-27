@@ -37,6 +37,7 @@
 <#-- @ftlvariable name="optionalField" type="org.apache.plc4x.plugins.codegenerator.types.fields.OptionalField" -->
 <#-- @ftlvariable name="paddingField" type="org.apache.plc4x.plugins.codegenerator.types.fields.PaddingField" -->
 <#-- @ftlvariable name="reservedField" type="org.apache.plc4x.plugins.codegenerator.types.fields.ReservedField" -->
+<#-- @ftlvariable name="reverseField" type="org.apache.plc4x.plugins.codegenerator.types.fields.ReverseField" -->
 <#-- @ftlvariable name="simpleField" type="org.apache.plc4x.plugins.codegenerator.types.fields.SimpleField" -->
 <#-- @ftlvariable name="switchField" type="org.apache.plc4x.plugins.codegenerator.types.fields.SwitchField" -->
 <#-- @ftlvariable name="virtualField" type="org.apache.plc4x.plugins.codegenerator.types.fields.VirtualField" -->
@@ -81,6 +82,265 @@ import java.math.BigInteger;
 import java.time.*;
 import java.util.*;
 import java.util.function.Supplier;
+
+<#macro fieldTemplate field>
+
+    <#switch field.typeName>
+        <#case "array">
+            <#assign arrayField = field>
+
+            // Array field (${arrayField.name})
+        <#-- Only update curPos if the length expression uses it -->
+            <#if arrayField.loopExpression.contains("curPos")>
+                curPos = io.getPos() - startPos;
+            </#if>
+        <#-- If this is a count array, we can directly initialize an array with the given size -->
+            <#if helper.isCountArrayField(field)>
+                // Count array
+                if(${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)} > Integer.MAX_VALUE) {
+                throw new ParseException("Array count of " + (${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)}) + " exceeds the maximum allowed count of " + Integer.MAX_VALUE);
+                }
+                ${helper.getLanguageTypeNameForField(field)}[] ${arrayField.name};
+                {
+                int itemCount = (int) ${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)};
+                ${arrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[itemCount];
+                for(int curItem = 0; curItem < itemCount; curItem++) {
+            <#-- When parsing simple types, there is nothing that could require the "lastItem" -->
+                <#if !helper.isSimpleTypeReference(arrayField.type)>boolean lastItem = curItem == (itemCount - 1);</#if>
+                ${arrayField.name}[curItem] = <#if helper.isSimpleTypeReference(arrayField.type)><#assign simpleTypeReference = arrayField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else>${arrayField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(arrayField.type, parserArgument?index), true)}) (${helper.toParseExpression(arrayField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)<#if helper.isDiscriminatedChildTypeDefinition(helper.getTypeDefinitionForTypeReference(arrayField.type))>.build()</#if></#if>;
+                }
+                }
+            <#-- In all other cases do we have to work with a list, that is later converted to an array -->
+            <#else>
+            <#-- For a length array, we read data till the read position of the buffer reaches a given position -->
+                <#if helper.isLengthArrayField(field)>
+                    // Length array
+                    int _${arrayField.name}Length = ${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)};
+                    List<${helper.getNonPrimitiveLanguageTypeNameForField(arrayField)}> _${arrayField.name}List = new LinkedList<>();
+                    int ${arrayField.name}EndPos = io.getPos() + _${arrayField.name}Length;
+                    while(io.getPos() < ${arrayField.name}EndPos) {
+                    _${arrayField.name}List.add(<#if helper.isSimpleTypeReference(arrayField.type)><#assign simpleTypeReference = arrayField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else>${arrayField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(arrayField.type, parserArgument?index), true)}) (${helper.toParseExpression(arrayField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>);
+                <#-- After parsing, update the current position, but only if it's needed -->
+                    <#if arrayField.loopExpression.contains("curPos")>
+                        curPos = io.getPos() - startPos;
+                    </#if>
+                    }
+                <#-- A terminated array keeps on reading data as long as the termination expression evaluates to false -->
+                <#elseif helper.isTerminatedArrayField(field)>
+                    // Terminated array
+                    List<${helper.getNonPrimitiveLanguageTypeNameForField(arrayField)}> _${arrayField.name}List = new LinkedList<>();
+                    while(!((boolean) (${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)}))) {
+                    _${arrayField.name}List.add(<#if helper.isSimpleTypeReference(arrayField.type)><#assign simpleTypeReference = arrayField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else>${arrayField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(arrayField.type, parserArgument?index), true)}) (${helper.toParseExpression(arrayField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>);
+
+                <#-- After parsing, update the current position, but only if it's needed -->
+                    <#if arrayField.loopExpression.contains("curPos")>
+                        curPos = io.getPos() - startPos;
+                    </#if>
+                    }
+                </#if>
+            <#--
+                Convert the list into an array. However if the array is of a primitive
+                type we have to iterate over it's elements and explicitly cast them.
+                Otherwise a simple toArray call is fine.
+            -->
+                <#if helper.isSimpleTypeReference(arrayField.type)>
+                    ${helper.getLanguageTypeNameForField(field)}[] ${arrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[_${arrayField.name}List.size()];
+                    for(int i = 0; i < _${arrayField.name}List.size(); i++) {
+                    ${arrayField.name}[i] = (${helper.getLanguageTypeNameForField(field)}) _${arrayField.name}List.get(i);
+                    }
+                <#else>
+                    ${helper.getLanguageTypeNameForField(field)}[] ${arrayField.name} = _${arrayField.name}List.toArray(new ${helper.getNonPrimitiveLanguageTypeNameForField(arrayField)}[0]);
+                </#if>
+            </#if>
+            <#break>
+        <#case "checksum">
+            <#assign checksumField = field>
+            <#assign simpleTypeReference = checksumField.type>
+
+            // Checksum Field (checksum)
+            {
+            ${helper.getLanguageTypeNameForField(field)} checksum = ${helper.getNullValueForTypeReference(checksumField.type)};
+            // Create an array of all the bytes read in this message element so far.
+            byte[] checksumRawData = io.getBytes(startPos, io.getPos());
+            ${helper.getLanguageTypeNameForField(field)} checksumRef = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
+            checksum = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(checksumField, checksumField.checksumExpression, type.parserArguments)});
+            if(checksum != checksumRef) {
+            throw new ParseException(String.format("Checksum verification failed. Expected %04X but got %04X", checksumRef & 0xFFFF, checksum & 0xFFFF));
+            }
+            }
+            <#break>
+        <#case "const">
+            <#assign constField = field>
+            <#assign simpleTypeReference = constField.type>
+
+            // Const Field (${constField.name})
+            ${helper.getLanguageTypeNameForField(field)} ${constField.name} = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
+            if(${constField.name} != ${type.name}.${constField.name?upper_case}) {
+            throw new ParseException("Expected constant value " + ${type.name}.${constField.name?upper_case} + " but got " + ${constField.name});
+            }
+            <#break>
+        <#case "discriminator">
+            <#assign discriminatorField = field>
+            <#assign simpleTypeReference = discriminatorField.type>
+
+            // Discriminator Field (${discriminatorField.name}) (Used as input to a switch field)
+            ${helper.getLanguageTypeNameForField(field)} ${discriminatorField.name} = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
+            <#break>
+        <#case "enum">
+            <#assign enumField = field>
+
+            // Enum field (${enumField.name})
+            ${helper.getLanguageTypeNameForField(field)} ${enumField.name} = ${helper.getLanguageTypeNameForField(field)}.valueOf(${helper.getReadBufferReadMethodCall(helper.getEnumBaseTypeReference(enumField.type))});
+            <#break>
+        <#case "implicit">
+            <#assign implicitField = field>
+            <#assign simpleTypeReference = implicitField.type>
+
+            // Implicit Field (${implicitField.name}) (Used for parsing, but it's value is not stored as it's implicitly given by the objects content)
+            ${helper.getLanguageTypeNameForField(field)} ${implicitField.name} = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
+            <#break>
+        <#case "manualArray">
+            <#assign manualArrayField = field>
+
+            // Manual Array Field (${manualArrayField.name})
+        <#-- Only update curPos if the length expression uses it -->
+            <#if manualArrayField.loopExpression.contains("curPos")>
+                curPos = io.getPos() - startPos;
+            </#if>
+        <#-- If this is a count array, we can directly initialize an array with the given size -->
+            <#if helper.isCountArrayField(field)>
+                // Count array
+                int _${manualArrayField.name}Count = ${helper.toParseExpression(manualArrayField, manualArrayField.loopExpression, type.parserArguments)};
+                ${helper.getLanguageTypeNameForField(field)}[] ${manualArrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[_${manualArrayField.name}Count];
+                for(int i = 0; i < _${manualArrayField.name}Count; i++) {
+                ${manualArrayField.name}[i] = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualArrayField, manualArrayField.parseExpression, type.parserArguments)});
+                }
+            <#-- In all other cases do we have to work with a list, that is later converted to an array -->
+            <#else>
+            <#-- For a length array, we read data till the read position of the buffer reaches a given position -->
+                <#if helper.isLengthArrayField(field)>
+                    // Length array
+                    int _${manualArrayField.name}Length = ${helper.toParseExpression(manualArrayField, manualArrayField.loopExpression, type.parserArguments)};
+                    List<${helper.getNonPrimitiveLanguageTypeNameForField(manualArrayField)}> _${manualArrayField.name}List = new LinkedList<>();
+                    int ${manualArrayField.name}EndPos = io.getPos() + _${manualArrayField.name}Length;
+                    while(io.getPos() < ${manualArrayField.name}EndPos) {
+                    _${manualArrayField.name}List.add((${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualArrayField, manualArrayField.parseExpression, type.parserArguments)}));
+                <#-- After parsing, update the current position, but only if it's needed -->
+                    <#if manualArrayField.loopExpression.contains("curPos")>
+                        curPos = io.getPos() - startPos;
+                    </#if>
+                    }
+                <#-- A terminated array keeps on reading data as long as the termination expression evaluates to false -->
+                <#elseif helper.isTerminatedArrayField(field)>
+                    // Terminated array
+                    List<${helper.getNonPrimitiveLanguageTypeNameForField(manualArrayField)}> _${manualArrayField.name}List = new LinkedList<>();
+                    while(!((boolean) (${helper.toParseExpression(manualArrayField, manualArrayField.loopExpression, type.parserArguments)}))) {
+                    _${manualArrayField.name}List.add((${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualArrayField, manualArrayField.parseExpression, type.parserArguments)}));
+
+                <#-- After parsing, update the current position, but only if it's needed -->
+                    <#if manualArrayField.loopExpression.contains("curPos")>
+                        curPos = io.getPos() - startPos;
+                    </#if>
+                    }
+                </#if>
+            <#--
+                Convert the list into an array. However if the array is of a primitive
+                type we have to iterate over it's elements and explicitly cast them.
+                Otherwise a simple toArray call is fine.
+            -->
+                <#if helper.isSimpleTypeReference(field.type)>
+                    ${helper.getLanguageTypeNameForField(field)}[] ${manualArrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[_${manualArrayField.name}List.size()];
+                    for(int i = 0; i < _${manualArrayField.name}List.size(); i++) {
+                    ${manualArrayField.name}[i] = (${helper.getLanguageTypeNameForField(field)}) _${manualArrayField.name}List.get(i);
+                    }
+                <#else>
+                    ${helper.getLanguageTypeNameForField(field)}[] ${manualArrayField.name} = _${manualArrayField.name}List.toArray(new ${helper.getNonPrimitiveLanguageTypeNameForField(manualArrayField)}[0]);
+                </#if>
+            </#if>
+            <#break>
+        <#case "manual">
+            <#assign manualField = field>
+
+            // Manual Field (${manualField.name})
+            ${helper.getLanguageTypeNameForField(field)} ${manualField.name} = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualField, manualField.parseExpression, type.parserArguments)});
+            <#break>
+        <#case "optional">
+            <#assign optionalField = field>
+
+            // Optional Field (${optionalField.name}) (Can be skipped, if a given expression evaluates to false)
+            <#if optionalField.conditionExpression.contains("curPos")>
+                curPos = io.getPos() - startPos;
+            </#if>
+            ${helper.getLanguageTypeNameForField(field)} ${optionalField.name} = null;
+            if(${helper.toParseExpression(optionalField, optionalField.conditionExpression, type.parserArguments)}) {
+            ${optionalField.name} = <#if helper.isSimpleTypeReference(optionalField.type)>${helper.getReadBufferReadMethodCall(optionalField.type)}<#else>${optionalField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(optionalField.type, parserArgument?index), true)}) (${helper.toParseExpression(optionalField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>;
+            }
+            <#break>
+        <#case "padding">
+            <#assign paddingField = field>
+            <#assign simpleTypeReference = paddingField.type>
+
+            // Padding Field (padding)
+            {
+            boolean _needsPadding = (boolean) ((io.hasMore(${helper.getNumBits(simpleTypeReference)})) && (${helper.toParseExpression(paddingField, paddingField.paddingCondition, type.parserArguments)}));
+            if(_needsPadding) {
+            // Just read the padding data and ignore it
+            ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
+            }
+            }
+            <#break>
+        <#case "reserved">
+            <#assign reservedField = field>
+            <#assign simpleTypeReference = reservedField.type>
+
+            // Reserved Field (Compartmentalized so the "reserved" variable can't leak)
+            {
+            ${helper.getLanguageTypeNameForField(field)} reserved = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
+            if(reserved != ${helper.getReservedValue(reservedField)}) {
+            LOGGER.info("Expected constant value " + ${reservedField.referenceValue} + " but got " + reserved + " for reserved field.");
+            }
+            }
+            <#break>
+        <#case "reverse">
+            // reverse buffer
+            ReadBuffer buffer = io;
+            io = io.flip(${field.sizeInBits});
+            <#list field.fields as nested>
+                <@fieldTemplate field=nested />
+            </#list>
+            io = buffer;
+            <#break>
+        <#case "simple">
+            <#assign simpleField = field>
+
+            // Simple Field (${simpleField.name})
+            ${helper.getLanguageTypeNameForField(field)} ${simpleField.name} = <#if helper.isSimpleTypeReference(simpleField.type)><#assign simpleTypeReference = simpleField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else><#assign complexTypeReference = simpleField.type>${complexTypeReference.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(simpleField.type, parserArgument?index), true)}) (${helper.toParseExpression(simpleField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>;
+            <#break>
+        <#case "switch">
+            <#assign switchField = field>
+
+            // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
+            ${type.name}Builder builder = null;
+            <#list switchField.cases as case>
+                <#if case.discriminatorValues?has_content>if(<#list case.discriminatorValues as discriminatorValue>EvaluationHelper.equals(${helper.toParseExpression(null, switchField.discriminatorExpressions[discriminatorValue?index], type.parserArguments)}, ${discriminatorValue})<#sep> && </#sep></#list>) </#if>{
+                builder = ${case.name}IO.staticParse(io<#if case.parserArguments?has_content>, <#list case.parserArguments as parserArgument>${parserArgument.name}<#sep>, </#sep></#list></#if>);
+                }<#sep> else </#sep>
+            </#list>
+            if (builder == null) {
+            throw new ParseException("Unsupported case for discriminated type");
+            }
+            <#break>
+
+        <#case "virtual">
+            <#assign virtualField = field>
+
+            // Virtual field (Just declare a local variable so we can access it in the parser)
+            ${helper.getLanguageTypeNameForField(field)} ${virtualField.name} = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(virtualField, virtualField.valueExpression, type.parserArguments)});
+            <#break>
+    </#switch>
+
+</#macro>
+
 
 public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<${type.name}, ${type.name}><#else>MessageInput<${type.name}></#if> {
 
@@ -141,250 +401,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
         int startPos = io.getPos();
         int curPos;
 <#list type.fields as field>
-<#switch field.typeName>
-    <#case "array">
-        <#assign arrayField = field>
-
-        // Array field (${arrayField.name})
-        <#-- Only update curPos if the length expression uses it -->
-        <#if arrayField.loopExpression.contains("curPos")>
-        curPos = io.getPos() - startPos;
-        </#if>
-        <#-- If this is a count array, we can directly initialize an array with the given size -->
-        <#if helper.isCountArrayField(field)>
-        // Count array
-        if(${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)} > Integer.MAX_VALUE) {
-            throw new ParseException("Array count of " + (${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)}) + " exceeds the maximum allowed count of " + Integer.MAX_VALUE);
-        }
-        ${helper.getLanguageTypeNameForField(field)}[] ${arrayField.name};
-        {
-            int itemCount = (int) ${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)};
-            ${arrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[itemCount];
-            for(int curItem = 0; curItem < itemCount; curItem++) {
-                <#-- When parsing simple types, there is nothing that could require the "lastItem" -->
-                <#if !helper.isSimpleTypeReference(arrayField.type)>boolean lastItem = curItem == (itemCount - 1);</#if>
-                ${arrayField.name}[curItem] = <#if helper.isSimpleTypeReference(arrayField.type)><#assign simpleTypeReference = arrayField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else>${arrayField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(arrayField.type, parserArgument?index), true)}) (${helper.toParseExpression(arrayField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)<#if helper.isDiscriminatedChildTypeDefinition(helper.getTypeDefinitionForTypeReference(arrayField.type))>.build()</#if></#if>;
-            }
-        }
-        <#-- In all other cases do we have to work with a list, that is later converted to an array -->
-        <#else>
-            <#-- For a length array, we read data till the read position of the buffer reaches a given position -->
-            <#if helper.isLengthArrayField(field)>
-        // Length array
-        int _${arrayField.name}Length = ${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)};
-        List<${helper.getNonPrimitiveLanguageTypeNameForField(arrayField)}> _${arrayField.name}List = new LinkedList<>();
-        int ${arrayField.name}EndPos = io.getPos() + _${arrayField.name}Length;
-        while(io.getPos() < ${arrayField.name}EndPos) {
-            _${arrayField.name}List.add(<#if helper.isSimpleTypeReference(arrayField.type)><#assign simpleTypeReference = arrayField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else>${arrayField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(arrayField.type, parserArgument?index), true)}) (${helper.toParseExpression(arrayField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>);
-            <#-- After parsing, update the current position, but only if it's needed -->
-            <#if arrayField.loopExpression.contains("curPos")>
-            curPos = io.getPos() - startPos;
-            </#if>
-        }
-            <#-- A terminated array keeps on reading data as long as the termination expression evaluates to false -->
-            <#elseif helper.isTerminatedArrayField(field)>
-        // Terminated array
-        List<${helper.getNonPrimitiveLanguageTypeNameForField(arrayField)}> _${arrayField.name}List = new LinkedList<>();
-        while(!((boolean) (${helper.toParseExpression(arrayField, arrayField.loopExpression, type.parserArguments)}))) {
-            _${arrayField.name}List.add(<#if helper.isSimpleTypeReference(arrayField.type)><#assign simpleTypeReference = arrayField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else>${arrayField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(arrayField.type, parserArgument?index), true)}) (${helper.toParseExpression(arrayField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>);
-
-            <#-- After parsing, update the current position, but only if it's needed -->
-            <#if arrayField.loopExpression.contains("curPos")>
-            curPos = io.getPos() - startPos;
-            </#if>
-        }
-            </#if>
-            <#--
-                Convert the list into an array. However if the array is of a primitive
-                type we have to iterate over it's elements and explicitly cast them.
-                Otherwise a simple toArray call is fine.
-            -->
-            <#if helper.isSimpleTypeReference(arrayField.type)>
-        ${helper.getLanguageTypeNameForField(field)}[] ${arrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[_${arrayField.name}List.size()];
-        for(int i = 0; i < _${arrayField.name}List.size(); i++) {
-            ${arrayField.name}[i] = (${helper.getLanguageTypeNameForField(field)}) _${arrayField.name}List.get(i);
-        }
-            <#else>
-        ${helper.getLanguageTypeNameForField(field)}[] ${arrayField.name} = _${arrayField.name}List.toArray(new ${helper.getNonPrimitiveLanguageTypeNameForField(arrayField)}[0]);
-            </#if>
-        </#if>
-        <#break>
-    <#case "checksum">
-        <#assign checksumField = field>
-        <#assign simpleTypeReference = checksumField.type>
-
-        // Checksum Field (checksum)
-        {
-            ${helper.getLanguageTypeNameForField(field)} checksum = ${helper.getNullValueForTypeReference(checksumField.type)};
-            // Create an array of all the bytes read in this message element so far.
-            byte[] checksumRawData = io.getBytes(startPos, io.getPos());
-            ${helper.getLanguageTypeNameForField(field)} checksumRef = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
-            checksum = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(checksumField, checksumField.checksumExpression, type.parserArguments)});
-            if(checksum != checksumRef) {
-                throw new ParseException(String.format("Checksum verification failed. Expected %04X but got %04X", checksumRef & 0xFFFF, checksum & 0xFFFF));
-            }
-        }
-        <#break>
-    <#case "const">
-        <#assign constField = field>
-        <#assign simpleTypeReference = constField.type>
-
-        // Const Field (${constField.name})
-        ${helper.getLanguageTypeNameForField(field)} ${constField.name} = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
-        if(${constField.name} != ${type.name}.${constField.name?upper_case}) {
-            throw new ParseException("Expected constant value " + ${type.name}.${constField.name?upper_case} + " but got " + ${constField.name});
-        }
-        <#break>
-    <#case "discriminator">
-        <#assign discriminatorField = field>
-        <#assign simpleTypeReference = discriminatorField.type>
-
-        // Discriminator Field (${discriminatorField.name}) (Used as input to a switch field)
-        ${helper.getLanguageTypeNameForField(field)} ${discriminatorField.name} = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
-        <#break>
-    <#case "enum">
-        <#assign enumField = field>
-
-        // Enum field (${enumField.name})
-        ${helper.getLanguageTypeNameForField(field)} ${enumField.name} = ${helper.getLanguageTypeNameForField(field)}.valueOf(${helper.getReadBufferReadMethodCall(helper.getEnumBaseTypeReference(enumField.type))});
-        <#break>
-    <#case "implicit">
-        <#assign implicitField = field>
-        <#assign simpleTypeReference = implicitField.type>
-
-        // Implicit Field (${implicitField.name}) (Used for parsing, but it's value is not stored as it's implicitly given by the objects content)
-        ${helper.getLanguageTypeNameForField(field)} ${implicitField.name} = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
-        <#break>
-    <#case "manualArray">
-        <#assign manualArrayField = field>
-
-        // Manual Array Field (${manualArrayField.name})
-        <#-- Only update curPos if the length expression uses it -->
-        <#if manualArrayField.loopExpression.contains("curPos")>
-        curPos = io.getPos() - startPos;
-        </#if>
-        <#-- If this is a count array, we can directly initialize an array with the given size -->
-        <#if helper.isCountArrayField(field)>
-        // Count array
-        int _${manualArrayField.name}Count = ${helper.toParseExpression(manualArrayField, manualArrayField.loopExpression, type.parserArguments)};
-        ${helper.getLanguageTypeNameForField(field)}[] ${manualArrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[_${manualArrayField.name}Count];
-        for(int i = 0; i < _${manualArrayField.name}Count; i++) {
-            ${manualArrayField.name}[i] = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualArrayField, manualArrayField.parseExpression, type.parserArguments)});
-        }
-        <#-- In all other cases do we have to work with a list, that is later converted to an array -->
-        <#else>
-            <#-- For a length array, we read data till the read position of the buffer reaches a given position -->
-            <#if helper.isLengthArrayField(field)>
-        // Length array
-        int _${manualArrayField.name}Length = ${helper.toParseExpression(manualArrayField, manualArrayField.loopExpression, type.parserArguments)};
-        List<${helper.getNonPrimitiveLanguageTypeNameForField(manualArrayField)}> _${manualArrayField.name}List = new LinkedList<>();
-        int ${manualArrayField.name}EndPos = io.getPos() + _${manualArrayField.name}Length;
-        while(io.getPos() < ${manualArrayField.name}EndPos) {
-            _${manualArrayField.name}List.add((${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualArrayField, manualArrayField.parseExpression, type.parserArguments)}));
-            <#-- After parsing, update the current position, but only if it's needed -->
-            <#if manualArrayField.loopExpression.contains("curPos")>
-            curPos = io.getPos() - startPos;
-            </#if>
-        }
-            <#-- A terminated array keeps on reading data as long as the termination expression evaluates to false -->
-            <#elseif helper.isTerminatedArrayField(field)>
-        // Terminated array
-        List<${helper.getNonPrimitiveLanguageTypeNameForField(manualArrayField)}> _${manualArrayField.name}List = new LinkedList<>();
-        while(!((boolean) (${helper.toParseExpression(manualArrayField, manualArrayField.loopExpression, type.parserArguments)}))) {
-            _${manualArrayField.name}List.add((${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualArrayField, manualArrayField.parseExpression, type.parserArguments)}));
-
-            <#-- After parsing, update the current position, but only if it's needed -->
-            <#if manualArrayField.loopExpression.contains("curPos")>
-            curPos = io.getPos() - startPos;
-            </#if>
-        }
-            </#if>
-            <#--
-                Convert the list into an array. However if the array is of a primitive
-                type we have to iterate over it's elements and explicitly cast them.
-                Otherwise a simple toArray call is fine.
-            -->
-            <#if helper.isSimpleTypeReference(field.type)>
-        ${helper.getLanguageTypeNameForField(field)}[] ${manualArrayField.name} = new ${helper.getLanguageTypeNameForField(field)}[_${manualArrayField.name}List.size()];
-        for(int i = 0; i < _${manualArrayField.name}List.size(); i++) {
-            ${manualArrayField.name}[i] = (${helper.getLanguageTypeNameForField(field)}) _${manualArrayField.name}List.get(i);
-        }
-            <#else>
-        ${helper.getLanguageTypeNameForField(field)}[] ${manualArrayField.name} = _${manualArrayField.name}List.toArray(new ${helper.getNonPrimitiveLanguageTypeNameForField(manualArrayField)}[0]);
-            </#if>
-        </#if>
-        <#break>
-    <#case "manual">
-        <#assign manualField = field>
-
-        // Manual Field (${manualField.name})
-        ${helper.getLanguageTypeNameForField(field)} ${manualField.name} = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualField, manualField.parseExpression, type.parserArguments)});
-        <#break>
-    <#case "optional">
-        <#assign optionalField = field>
-
-        // Optional Field (${optionalField.name}) (Can be skipped, if a given expression evaluates to false)
-        <#if optionalField.conditionExpression.contains("curPos")>
-        curPos = io.getPos() - startPos;
-        </#if>
-        ${helper.getLanguageTypeNameForField(field)} ${optionalField.name} = null;
-        if(${helper.toParseExpression(optionalField, optionalField.conditionExpression, type.parserArguments)}) {
-            ${optionalField.name} = <#if helper.isSimpleTypeReference(optionalField.type)>${helper.getReadBufferReadMethodCall(optionalField.type)}<#else>${optionalField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(optionalField.type, parserArgument?index), true)}) (${helper.toParseExpression(optionalField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>;
-        }
-        <#break>
-    <#case "padding">
-        <#assign paddingField = field>
-        <#assign simpleTypeReference = paddingField.type>
-
-        // Padding Field (padding)
-        {
-            boolean _needsPadding = (boolean) ((io.hasMore(${helper.getNumBits(simpleTypeReference)})) && (${helper.toParseExpression(paddingField, paddingField.paddingCondition, type.parserArguments)}));
-            if(_needsPadding) {
-                // Just read the padding data and ignore it
-                ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
-            }
-        }
-        <#break>
-    <#case "reserved">
-        <#assign reservedField = field>
-        <#assign simpleTypeReference = reservedField.type>
-
-        // Reserved Field (Compartmentalized so the "reserved" variable can't leak)
-        {
-            ${helper.getLanguageTypeNameForField(field)} reserved = ${helper.getReadBufferReadMethodCall(simpleTypeReference)};
-            if(reserved != ${helper.getReservedValue(reservedField)}) {
-                LOGGER.info("Expected constant value " + ${reservedField.referenceValue} + " but got " + reserved + " for reserved field.");
-            }
-        }
-        <#break>
-    <#case "simple">
-        <#assign simpleField = field>
-
-        // Simple Field (${simpleField.name})
-        ${helper.getLanguageTypeNameForField(field)} ${simpleField.name} = <#if helper.isSimpleTypeReference(simpleField.type)><#assign simpleTypeReference = simpleField.type>${helper.getReadBufferReadMethodCall(simpleTypeReference)}<#else><#assign complexTypeReference = simpleField.type>${complexTypeReference.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(simpleField.type, parserArgument?index), true)}) (${helper.toParseExpression(simpleField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>;
-        <#break>
-    <#case "switch">
-        <#assign switchField = field>
-
-        // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
-        ${type.name}Builder builder = null;
-        <#list switchField.cases as case>
-        <#if case.discriminatorValues?has_content>if(<#list case.discriminatorValues as discriminatorValue>EvaluationHelper.equals(${helper.toParseExpression(null, switchField.discriminatorExpressions[discriminatorValue?index], type.parserArguments)}, ${discriminatorValue})<#sep> && </#sep></#list>) </#if>{
-            builder = ${case.name}IO.staticParse(io<#if case.parserArguments?has_content>, <#list case.parserArguments as parserArgument>${parserArgument.name}<#sep>, </#sep></#list></#if>);
-        }<#sep> else </#sep>
-        </#list>
-        if (builder == null) {
-            throw new ParseException("Unsupported case for discriminated type");
-        }
-        <#break>
-
-    <#case "virtual">
-        <#assign virtualField = field>
-
-        // Virtual field (Just declare a local variable so we can access it in the parser)
-        ${helper.getLanguageTypeNameForField(field)} ${virtualField.name} = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(virtualField, virtualField.valueExpression, type.parserArguments)});
-        <#break>
-</#switch>
+    <@fieldTemplate field=field />
 </#list>
 
         // Create the instance
