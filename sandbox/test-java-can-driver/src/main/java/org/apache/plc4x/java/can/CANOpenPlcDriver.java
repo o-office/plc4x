@@ -42,12 +42,12 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
 
     @Override
     public String getProtocolCode() {
-        return "can";
+        return "canopen";
     }
 
     @Override
     public String getProtocolName() {
-        return "Controller Area Network";
+        return "CANopen";
     }
 
     @Override

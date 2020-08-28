@@ -19,8 +19,19 @@ under the License.
 package org.apache.plc4x.java.can.configuration;
 
 import org.apache.plc4x.java.spi.configuration.Configuration;
+import org.apache.plc4x.java.spi.configuration.annotations.ConfigurationParameter;
 import org.apache.plc4x.java.transport.socketcan.CANTransportConfiguration;
 
 public class CANConfiguration implements Configuration, CANTransportConfiguration {
 
+    @ConfigurationParameter
+    private int nodeId;
+
+    public int getNodeId() {
+        return nodeId;
+    }
+
+    public void setNodeId(int nodeId) {
+        this.nodeId = nodeId;
+    }
 }

@@ -39,7 +39,7 @@
 
   <testcase>
     <name>Standard frame with no payload: 5A1#</name>
-    <raw>a105000000000000</raw>
+    <raw>a1050000000000000000000000000000</raw>
     <root-type>SocketCANFrame</root-type>
     <xml>
       <SocketCANFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame">
@@ -55,7 +55,7 @@
 
   <testcase>
     <name>Remote transmission request: 5A1#R</name>
-    <raw>a105004000000000</raw>
+    <raw>a1050040000000000000000000000000</raw>
     <root-type>SocketCANFrame</root-type>
     <xml>
       <SocketCANFrame className="org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame">

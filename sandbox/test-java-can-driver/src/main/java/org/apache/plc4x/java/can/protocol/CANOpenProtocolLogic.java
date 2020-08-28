@@ -18,23 +18,62 @@ under the License.
 */
 package org.apache.plc4x.java.can.protocol;
 
+import org.apache.plc4x.java.can.configuration.CANConfiguration;
+import org.apache.plc4x.java.canopen.readwrite.CANOpenNetworkPayload;
 import org.apache.plc4x.java.canopen.readwrite.CANOpenPayload;
+import org.apache.plc4x.java.canopen.readwrite.io.CANOpenNetworkPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
+import org.apache.plc4x.java.canopen.readwrite.types.NMTState;
 import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
 import org.apache.plc4x.java.spi.ConversationContext;
 import org.apache.plc4x.java.spi.Plc4xProtocolBase;
+import org.apache.plc4x.java.spi.configuration.HasConfiguration;
+import org.apache.plc4x.java.spi.generation.ParseException;
 import org.apache.plc4x.java.spi.generation.ReadBuffer;
+import org.apache.plc4x.java.spi.generation.WriteBuffer;
+import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> {
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> implements HasConfiguration<CANConfiguration> {
 
     private Logger logger = LoggerFactory.getLogger(CANOpenProtocolLogic.class);
 
+    private CANConfiguration configuration;
+    private RequestTransactionManager tm;
+
+    @Override
+    public void setConfiguration(CANConfiguration configuration) {
+        this.configuration = configuration;
+        // Set the transaction manager to allow only one message at a time.
+        this.tm = new RequestTransactionManager(1);
+    }
+
     @Override
     public void onConnect(ConversationContext<SocketCANFrame> context) {
-        context.fireConnected();
+        CANOpenNetworkPayload state = new CANOpenNetworkPayload(NMTState.BOOTED_UP);
+        WriteBuffer buffer = new WriteBuffer(1);
+        try {
+            CANOpenNetworkPayloadIO.staticSerialize(buffer, state);
+            context.sendToWire(new SocketCANFrame(cobId(CANOpenService.NMT), buffer.getData()));
+            context.fireConnected();
+
+            Timer heartbeat = new Timer();
+            heartbeat.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    CANOpenNetworkPayload state = new CANOpenNetworkPayload(NMTState.OPERATIONAL);
+                    WriteBuffer buffer = new WriteBuffer(1);
+                    context.sendToWire(new SocketCANFrame(cobId(CANOpenService.NMT), buffer.getData()));
+                }
+            }, 5000, 5000);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -46,6 +85,8 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> {
         if (service != null) {
             ReadBuffer buffer = new ReadBuffer(msg.getData());
             CANOpenPayload payload = CANOpenPayloadIO.staticParse(buffer, service);
+
+
         }
     }
 
@@ -57,6 +98,10 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> {
     @Override
     public void onDisconnect(ConversationContext<SocketCANFrame> context) {
 
+    }
+
+    private int cobId(CANOpenService service) {
+        return service.getValue() & configuration.getNodeId();
     }
 
 }

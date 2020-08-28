@@ -243,7 +243,8 @@ public class SocketCANChannel extends OioByteStreamChannel {
 
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
-            ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+            ByteBuffer buffer = ByteBuffer.allocateDirect(len - off);
+            buffer.put(b, off, len);
             CanFrame frame = CanFrame.create(buffer);
             rawCanChannel.write(frame);
         }
