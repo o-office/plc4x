@@ -19,10 +19,10 @@
   -->
 <test:testsuite xmlns:test="https://plc4x.apache.org/schemas/parser-serializer-testsuite.xsd">
 
-  <name>Tests of socketcan/CANopen frames.</name>
+  <name>Tests of CANopen frames payload.</name>
 
   <testcase>
-    <name>Network heartbeat payload: 00</name>
+    <name>Network heartbeat, payload: 00</name>
     <raw>00</raw>
     <root-type>CANOpenPayload</root-type>
     <parser-arguments>
@@ -36,7 +36,7 @@
   </testcase>
 
   <testcase>
-    <name>Network heartbeat payload: 7F</name>
+    <name>Network heartbeat, payload: 7F</name>
     <raw>7F</raw>
     <root-type>CANOpenPayload</root-type>
     <parser-arguments>
@@ -47,6 +47,115 @@
         <state>PRE_OPERATIONAL</state>
       </CANOpenNetworkPayload>
     </xml>
+  </testcase>
+
+  <testcase>
+    <name>SDO request, payload: 4317100000000000</name>
+    <raw>4317100000000000</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>SDO_REQUEST</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenSDORequest className="org.apache.plc4x.java.canopen.readwrite.CANOpenSDORequest">
+        <command>INITIALIZE_UPLOAD</command>
+        <expedited>true</expedited>
+        <placement>true</placement>
+        <index>4119</index>
+        <subindex>0</subindex>
+        <data/>
+      </CANOpenSDORequest>
+    </xml>
+  </testcase>
+
+  <testcase>
+    <name>SDO request, payload: 00171000A00F0000</name>
+    <raw>00171000A00F0000</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>SDO_REQUEST</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenSDORequest className="org.apache.plc4x.java.canopen.readwrite.CANOpenSDORequest">
+        <command>SEGMENT_DOWNLOAD</command>
+        <expedited>false</expedited>
+        <placement>false</placement>
+        <index>4119</index>
+        <subindex>0</subindex>
+        <data/>
+      </CANOpenSDORequest>
+    </xml>
+  </testcase>
+
+  <testcase>
+    <name>SDO write request, payload: 2B171000D00F</name>
+    <raw>2B171000D00F</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>SDO_REQUEST</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenSDORequest className="org.apache.plc4x.java.canopen.readwrite.CANOpenSDORequest">
+        <command>INITIALIZE_DOWNLOAD</command>
+        <expedited>true</expedited>
+        <placement>true</placement>
+        <index>4119</index>
+        <subindex>0</subindex>
+        <data>
+          <data>208</data>
+          <data>15</data>
+        </data>
+      </CANOpenSDORequest>
+    </xml>
+  </testcase>
+
+  <testcase>
+    <name>SDO write result, payload: 60171000D0F00000</name>
+    <raw>00171000A00F0000</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>SDO_REQUEST</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenSDORequest className="org.apache.plc4x.java.canopen.readwrite.CANOpenSDORequest">
+        <command>SEGMENT_DOWNLOAD</command>
+        <expedited>false</expedited>
+        <placement>false</placement>
+        <index>4119</index>
+        <subindex>0</subindex>
+        <data/>
+      </CANOpenSDORequest>
+    </xml>
+  </testcase>
+
+  <!-- samples -->
+  <testcase>
+    <name>SDO response, payload: 6000200000</name>
+    <raw>6000200000</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>SDO_RESPONSE</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenNetworkPayload className="org.apache.plc4x.java.canopen.readwrite.CANOpenNetworkPayload">
+        <state>PRE_OPERATIONAL</state>
+      </CANOpenNetworkPayload>
+    </xml>
+  </testcase>
+
+  <testcase>
+    <name>PDO, payload: 78563412</name>
+    <raw>78563412</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>SDO_RESPONSE</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenNetworkPayload className="org.apache.plc4x.java.canopen.readwrite.CANOpenNetworkPayload">
+        <state>PRE_OPERATIONAL</state>
+      </CANOpenNetworkPayload>
+    </xml>
+
   </testcase>
 
 </test:testsuite>

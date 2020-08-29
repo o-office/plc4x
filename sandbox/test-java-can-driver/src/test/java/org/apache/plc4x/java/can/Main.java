@@ -29,7 +29,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         PlcDriverManager driverManager = new PlcDriverManager();
 
-        PlcConnection connection = driverManager.getConnection("canopen:javacan://vcan0?nodeId=15");
+        PlcConnection connection = driverManager.getConnection("canopen:javacan://vcan0?nodeId=11");
 
     }
 

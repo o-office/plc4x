@@ -78,25 +78,10 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
         @Override
         public int applyAsInt(ByteBuf byteBuf) {
             if (byteBuf.readableBytes() >= 5) {
-
-                System.out.println(ByteBufUtil.prettyHexDump(byteBuf));
-                byte len = byteBuf.getByte(4);
-                System.out.println("Length " + (int) len);
-
-                CanFrame frame = CanFrame.create(byteBuf.nioBuffer());
-                System.out.println(frame);
-
-                return len + 8 /* overhead */;
+                return 16; // socketcan transport always returns 16 bytes padded with zeros;
             }
             return -1; //discard
         }
     }
 
-    public class CANCleaner implements Consumer<ByteBuf> {
-        @Override
-        public void accept(ByteBuf byteBuf) {
-            System.out.println("Discard");
-            byteBuf.readByte();
-        }
-    }
 }

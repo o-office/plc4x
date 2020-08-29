@@ -27,6 +27,9 @@ public class CANConfiguration implements Configuration, CANTransportConfiguratio
     @ConfigurationParameter
     private int nodeId;
 
+    @ConfigurationParameter
+    private boolean hearbeat;
+
     public int getNodeId() {
         return nodeId;
     }
@@ -34,4 +37,13 @@ public class CANConfiguration implements Configuration, CANTransportConfiguratio
     public void setNodeId(int nodeId) {
         this.nodeId = nodeId;
     }
+
+    public boolean isHeartbeat() {
+        return hearbeat;
+    }
+
+    public void setHearbeat(boolean hearbeat) {
+        this.hearbeat = hearbeat;
+    }
+
 }

@@ -18,8 +18,10 @@
  */
 
 [enum uint 4 'CANOpenService'
-    ['0x00' BROADCAST]
-    ['0x07' NMT]
+    ['0b0000' BROADCAST   ]
+    ['0b1110' NMT         ]
+    ['0b1100' SDO_REQUEST ]
+    ['0b1011' SDO_RESPONSE]
 ]
 
 [enum uint 8 'NMTStateRequest'
@@ -41,11 +43,41 @@
     [typeSwitch 'function'
         ['CANOpenService.BROADCAST' CANOpenBroadcastPayload
             [enum NMTStateRequest 'request']
-            [reserved uint 1 '0x0']
+            [reserved uint 1 '0x00']
             [simple uint 7 'node']
         ]
         ['CANOpenService.NMT' CANOpenNetworkPayload
             [enum NMTState 'state']
         ]
+        ['CANOpenService.SDO_REQUEST' CANOpenSDORequest
+            [enum SDOCommand 'command']
+            [reserved uint 1 '0x00']
+            [implicit uint 2 'size' 'COUNT(data)']
+            [simple bit 'expedited'] // segmented
+            [simple bit 'placement']
+            [simple uint 16 'index']
+            [simple uint 8 'subindex']
+            [array uint 8 'data' COUNT 'size']
+        ]
+        ['CANOpenService.SDO_RESPONSE' CANOpenSDOResponse
+            [enum SDOCommand 'command']
+            [reserved uint 1 '0x00']
+            [implicit uint 2 'size' 'COUNT(data)']
+            [simple bit 'expedited'] // segmented
+            [simple bit 'placement']
+            [simple uint 16 'index']
+            [simple uint 8 'subindex']
+            [array uint 8 'data' COUNT 'size']
+        ]
     ]
+]
+
+[enum uint 3 'SDOCommand'
+    ['0x00' SEGMENT_DOWNLOAD]
+    ['0x01' INITIALIZE_DOWNLOAD]
+    ['0x02' INITIALIZE_UPLOAD]
+    ['0x03' SEGMENT_UPLOAD]
+    ['0x04' ABORT]
+    ['0x05' BLOCK_UPLOAD]
+    ['0x06' BLOCK_DOWNLOAD]
 ]

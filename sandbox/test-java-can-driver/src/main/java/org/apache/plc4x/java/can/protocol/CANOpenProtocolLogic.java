@@ -45,6 +45,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     private CANConfiguration configuration;
     private RequestTransactionManager tm;
+    private Timer heartbeat;
 
     @Override
     public void setConfiguration(CANConfiguration configuration) {
@@ -55,39 +56,46 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     @Override
     public void onConnect(ConversationContext<SocketCANFrame> context) {
-        CANOpenNetworkPayload state = new CANOpenNetworkPayload(NMTState.BOOTED_UP);
-        WriteBuffer buffer = new WriteBuffer(1);
         try {
-            CANOpenNetworkPayloadIO.staticSerialize(buffer, state);
-            context.sendToWire(new SocketCANFrame(cobId(CANOpenService.NMT), buffer.getData()));
-            context.fireConnected();
+            if (configuration.isHeartbeat()) {
+                context.sendToWire(createFrame(new CANOpenNetworkPayload(NMTState.BOOTED_UP)));
+                context.fireConnected();
 
-            Timer heartbeat = new Timer();
-            heartbeat.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    CANOpenNetworkPayload state = new CANOpenNetworkPayload(NMTState.OPERATIONAL);
-                    WriteBuffer buffer = new WriteBuffer(1);
-                    context.sendToWire(new SocketCANFrame(cobId(CANOpenService.NMT), buffer.getData()));
-                }
-            }, 5000, 5000);
+                this.heartbeat = new Timer();
+                this.heartbeat.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        try {
+                            context.sendToWire(createFrame(new CANOpenNetworkPayload(NMTState.OPERATIONAL)));
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, 5000, 5000);
+            }
         } catch (ParseException e) {
             e.printStackTrace();
         }
+    }
+
+    private SocketCANFrame createFrame(CANOpenNetworkPayload state) throws ParseException {
+        WriteBuffer buffer = new WriteBuffer(state.getLengthInBytes());
+        CANOpenNetworkPayloadIO.staticSerialize(buffer, state);
+        return new SocketCANFrame(cobId(CANOpenService.NMT), buffer.getData());
     }
 
     @Override
     protected void decode(ConversationContext<SocketCANFrame> context, SocketCANFrame msg) throws Exception {
         logger.info("Decode CAN message {}", msg);
 
-        int identifier = msg.getIdentifier();
-        CANOpenService service = CANOpenService.valueOf((byte) (identifier >> 7));
-        if (service != null) {
-            ReadBuffer buffer = new ReadBuffer(msg.getData());
-            CANOpenPayload payload = CANOpenPayloadIO.staticParse(buffer, service);
-
-
-        }
+//        int identifier = msg.getIdentifier();
+//        CANOpenService service = CANOpenService.valueOf((byte) (identifier >> 7));
+//        if (service != null) {
+//            ReadBuffer buffer = new ReadBuffer(msg.getData());
+//            CANOpenPayload payload = CANOpenPayloadIO.staticParse(buffer, service);
+//
+//
+//        }
     }
 
     @Override
@@ -101,7 +109,9 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     private int cobId(CANOpenService service) {
-        return service.getValue() & configuration.getNodeId();
+        // form 32 bit socketcan identifier
+        return (configuration.getNodeId() << 24) & 0xff000000 |
+            (service.getValue() << 16 ) & 0x00ff0000;
     }
 
 }
