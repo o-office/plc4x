@@ -114,10 +114,10 @@ public class SocketCANChannel extends OioByteStreamChannel {
             try {
                 while (!isInputShutdown()) {
                     CanFrame frame = handle.read();
-                    ByteBuf frameBytes = ByteBufAllocator.DEFAULT.buffer();
-                    frameBytes.writeBytes(frame.getBuffer());
-                    String dump = ByteBufUtil.prettyHexDump(frameBytes);
-                    System.out.println(frame + "\n" + dump);
+//                    ByteBuf frameBytes = ByteBufAllocator.DEFAULT.buffer();
+//                    frameBytes.writeBytes(frame.getBuffer());
+//                    String dump = ByteBufUtil.prettyHexDump(frameBytes);
+//                    System.out.println(frame + "\n" + dump);
                     buffer.writeBytes(frame.getBuffer());
                 }
             } catch (IOException e) {
@@ -245,6 +245,7 @@ public class SocketCANChannel extends OioByteStreamChannel {
         public void write(byte[] b, int off, int len) throws IOException {
             ByteBuffer buffer = ByteBuffer.allocateDirect(len - off);
             buffer.put(b, off, len);
+            buffer.flip();
             CanFrame frame = CanFrame.create(buffer);
             rawCanChannel.write(frame);
         }
