@@ -21,6 +21,47 @@
 
   <name>Tests of CANopen frames payload.</name>
 
+
+  <testcase>
+    <name>Time synchronization, payload: A017BD805034</name>
+    <!--
+    Initial test payload was A017BD835034, however it does not align with CANOpen spec or mapping on our side is wrong
+    -->
+    <raw>A017BD805034</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>TIME</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenTimeSynchronization className="org.apache.plc4x.java.canopen.readwrite.CANOpenTimeSynchronization">
+        <timeOfDay className="org.apache.plc4x.java.canopen.readwrite.TimeOfDay">
+          <millis>-663027446</millis>
+          <days>13392</days>
+        </timeOfDay>
+      </CANOpenTimeSynchronization>
+    </xml>
+  </testcase>
+
+  <testcase>
+    <name>Time synchronization, payload: 7019BE805034</name>
+    <!--
+    Initial test payload was 7019BE835034, however it does not align with CANOpen spec or mapping on our side is wrong
+    -->
+    <raw>7019BE805034</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>TIME</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenTimeSynchronization className="org.apache.plc4x.java.canopen.readwrite.CANOpenTimeSynchronization">
+        <timeOfDay className="org.apache.plc4x.java.canopen.readwrite.TimeOfDay">
+          <millis>-392494841</millis>
+          <days>13392</days>
+        </timeOfDay>
+      </CANOpenTimeSynchronization>
+    </xml>
+  </testcase>
+
   <testcase>
     <name>Network heartbeat, payload: 00</name>
     <raw>00</raw>

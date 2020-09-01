@@ -17,20 +17,21 @@
  * under the License.
  */
 
-[enum uint 4 'CANOpenService'
-    ['0b0000' BROADCAST   ]
-    ['0b0001' SYNC        ]
-    ['0b1110' NMT         ]
-    ['0b1100' SDO_REQUEST ]
-    ['0b1011' SDO_RESPONSE]
-    ['0b0011' TPDO_1]
-    ['0b0100' RPDO_1]
-    ['0b0101' TPDO_2]
-    ['0b0110' RPDO_2]
-    ['0b0111' TPDO_3]
-    ['0b1000' RPDO_3]
-    ['0b1001' TPDO_4]
-    ['0b1010' RPDO_4]
+[enum uint 4 'CANOpenService' [bit 'sdo', bit 'pdo', bit 'transmit', bit 'receive']
+    ['0b0000' BROADCAST    ['false', 'false', 'false', 'false'] ]
+    ['0b0001' SYNC         ['false', 'false', 'false', 'false'] ]
+    ['0b0010' TIME         ['false', 'false', 'false', 'false'] ]
+    ['0b1110' NMT          ['false', 'false', 'false', 'false'] ]
+    ['0b1100' SDO_REQUEST  ['true',  'false', 'false', 'true' ] ]
+    ['0b1011' SDO_RESPONSE ['true',  'false', 'true',  'false'] ]
+    ['0b0011' TPDO_1       ['false', 'true',  'true',  'false'] ]
+    ['0b0100' RPDO_1       ['false', 'true',  'false', 'true' ] ]
+    ['0b0101' TPDO_2       ['false', 'true',  'true',  'false'] ]
+    ['0b0110' RPDO_2       ['false', 'true',  'false', 'true' ] ]
+    ['0b0111' TPDO_3       ['false', 'true',  'true',  'false'] ]
+    ['0b1000' RPDO_3       ['false', 'true',  'false', 'true' ] ]
+    ['0b1001' TPDO_4       ['false', 'true',  'true',  'false'] ]
+    ['0b1010' RPDO_4       ['false', 'true',  'false', 'true' ] ]
 ]
 
 [enum uint 8 'NMTStateRequest'
@@ -55,6 +56,9 @@
             [reserved uint 1 '0x00']
             [simple uint 7 'node']
         ]
+        ['CANOpenService.TIME' CANOpenTimeSynchronization
+            [simple TimeOfDay 'timeOfDay']
+        ]
         ['CANOpenService.NMT' CANOpenNetworkPayload
             [enum NMTState 'state']
         ]
@@ -78,6 +82,30 @@
             [simple uint 8 'subindex']
             [array uint 8 'data' COUNT 'size']
         ]
+        ['CANOpenService.RPDO_1' CANOpenRPDO
+            [simple CANOpenPDO 'pdo' ['1', 'true']]
+        ]
+        ['CANOpenService.TPDO_1' CANOpenTPDO
+            [simple CANOpenPDO 'pdo' ['1', 'false']]
+        ]
+        ['CANOpenService.RPDO_2' CANOpenRPDO
+            [simple CANOpenPDO 'pdo' ['2', 'true']]
+        ]
+        ['CANOpenService.TPDO_2' CANOpenTPDO
+            [simple CANOpenPDO 'pdo' ['1', 'false']]
+        ]
+        ['CANOpenService.RPDO_3' CANOpenRPDO
+            [simple CANOpenPDO 'pdo' ['3', 'true']]
+        ]
+        ['CANOpenService.TPDO_3' CANOpenTPDO
+            [simple CANOpenPDO 'pdo' ['1', 'false']]
+        ]
+        ['CANOpenService.RPDO_4' CANOpenRPDO
+            [simple CANOpenPDO 'pdo' ['4', 'true']]
+        ]
+        ['CANOpenService.TPDO_4' CANOpenTPDO
+            [simple CANOpenPDO 'pdo' ['1', 'false']]
+        ]
     ]
 ]
 
@@ -89,4 +117,15 @@
     ['0x04' ABORT]
     ['0x05' BLOCK_UPLOAD]
     ['0x06' BLOCK_DOWNLOAD]
+]
+
+[type 'CANOpenPDO' [uint 2 'index', bit 'receive']
+
+]
+
+[type 'TimeOfDay'
+    // CiA 301 - section 7.1.6.5
+    [simple uint 28 'millis']
+    [reserved int 4 '0x00']
+    [simple uint 16 'days']
 ]
