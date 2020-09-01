@@ -50,6 +50,20 @@
   </testcase>
 
   <testcase>
+    <name>Network heartbeat, payload: 05</name>
+    <raw>05</raw>
+    <root-type>CANOpenPayload</root-type>
+    <parser-arguments>
+      <arg1>NMT</arg1>
+    </parser-arguments>
+    <xml>
+      <CANOpenNetworkPayload className="org.apache.plc4x.java.canopen.readwrite.CANOpenNetworkPayload">
+        <state>OPERATIONAL</state>
+      </CANOpenNetworkPayload>
+    </xml>
+  </testcase>
+
+  <testcase>
     <name>SDO request, payload: 4317100000000000</name>
     <raw>4317100000000000</raw>
     <root-type>CANOpenPayload</root-type>

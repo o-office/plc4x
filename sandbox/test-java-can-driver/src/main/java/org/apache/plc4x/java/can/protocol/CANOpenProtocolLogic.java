@@ -114,4 +114,8 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
             (service.getValue() << 16 ) & 0x00ff0000;
     }
 
+    private CANOpenService serviceId(int nodeId) {
+        // form 32 bit socketcan identifier
+        return CANOpenService.valueOf((byte) (nodeId >> 7));
+    }
 }

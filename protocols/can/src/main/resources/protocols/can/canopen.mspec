@@ -19,9 +19,18 @@
 
 [enum uint 4 'CANOpenService'
     ['0b0000' BROADCAST   ]
+    ['0b0001' SYNC        ]
     ['0b1110' NMT         ]
     ['0b1100' SDO_REQUEST ]
     ['0b1011' SDO_RESPONSE]
+    ['0b0011' TPDO_1]
+    ['0b0100' RPDO_1]
+    ['0b0101' TPDO_2]
+    ['0b0110' RPDO_2]
+    ['0b0111' TPDO_3]
+    ['0b1000' RPDO_3]
+    ['0b1001' TPDO_4]
+    ['0b1010' RPDO_4]
 ]
 
 [enum uint 8 'NMTStateRequest'
