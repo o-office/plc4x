@@ -19,8 +19,10 @@ under the License.
 package org.apache.plc4x.java.can.protocol;
 
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
+import org.apache.plc4x.java.canopen.readwrite.CANOpenHeartbeatPayload;
 import org.apache.plc4x.java.canopen.readwrite.CANOpenNetworkPayload;
 import org.apache.plc4x.java.canopen.readwrite.CANOpenPayload;
+import org.apache.plc4x.java.canopen.readwrite.io.CANOpenHeartbeatPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenNetworkPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
@@ -58,7 +60,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     public void onConnect(ConversationContext<SocketCANFrame> context) {
         try {
             if (configuration.isHeartbeat()) {
-                context.sendToWire(createFrame(new CANOpenNetworkPayload(NMTState.BOOTED_UP)));
+                context.sendToWire(createFrame(new CANOpenHeartbeatPayload(NMTState.BOOTED_UP)));
                 context.fireConnected();
 
                 this.heartbeat = new Timer();
@@ -66,7 +68,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
                     @Override
                     public void run() {
                         try {
-                            context.sendToWire(createFrame(new CANOpenNetworkPayload(NMTState.OPERATIONAL)));
+                            context.sendToWire(createFrame(new CANOpenHeartbeatPayload(NMTState.OPERATIONAL)));
                         } catch (ParseException e) {
                             e.printStackTrace();
                         }
@@ -78,10 +80,10 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
         }
     }
 
-    private SocketCANFrame createFrame(CANOpenNetworkPayload state) throws ParseException {
+    private SocketCANFrame createFrame(CANOpenHeartbeatPayload state) throws ParseException {
         WriteBuffer buffer = new WriteBuffer(state.getLengthInBytes());
-        CANOpenNetworkPayloadIO.staticSerialize(buffer, state);
-        return new SocketCANFrame(cobId(CANOpenService.NMT), buffer.getData());
+        CANOpenHeartbeatPayloadIO.staticSerialize(buffer, state);
+        return new SocketCANFrame(cobId(CANOpenService.HEARTBEAT), buffer.getData());
     }
 
     @Override
