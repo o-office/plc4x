@@ -18,15 +18,13 @@
  */
 
 [type 'BrokenSocketCANFrame'
-    [discriminator bit 'extended']
     [simple bit 'remote']
     [simple bit 'error']
-    [simple bit 'extended']
+    [discriminator bit 'extended']
     [typeSwitch 'extended'
         ['true' ExtendedSocketCANFrame
             [simple uint 29 'identifier']
         ]
-
         ['false' StandardSocketCANFrame
             [const  uint 18 'spacing' '0x0']
             [simple uint 11 'identifier']
@@ -58,7 +56,7 @@
     [reserved uint 8 '0x0'] // padding 1
     [reserved uint 8 '0x0'] // padding 2
     [array int 8 'data' COUNT 'size']
-    [padding  uint 8 '0x00' '8 - (COUNT(data))']
+    [padding uint 8 'alignment' '0x00' '8 - (COUNT(data))']
 ]
 
 [type 'SocketCAN20AFrame'
