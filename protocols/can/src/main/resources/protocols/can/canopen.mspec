@@ -36,7 +36,7 @@
 ]
 
 [enum uint 8 'NMTStateRequest'
-    ['0x01' OPERATIONAL]
+    ['0x01' START]
     ['0x02' STOP]
     ['0x80' PRE_OPERATIONAL]
     ['0x81' RESET_NODE]
@@ -58,7 +58,7 @@
             [simple uint 7 'node']
         ]
         ['CANOpenService.TIME' CANOpenTimeSynchronization
-            [simple TimeOfDay 'timeOfDay']
+            [simple CANOpenTime 'timeOfDay']
         ]
         ['CANOpenService.RECEIVE_PDO_1' CANOpenPDOPayload
             [simple CANOpenPDO 'pdo' ['1', 'true']]
@@ -84,12 +84,12 @@
         ['CANOpenService.TRANSMIT_PDO_4' CANOpenPDOPayload
             [simple CANOpenPDO 'pdo' ['1', 'false']]
         ]
-        ['CANOpenService.TRANSMIT_SDO' CANOpenSDORequest
-            [enum SDOCommand 'command']
+        ['CANOpenService.RECEIVE_SDO' CANOpenSDORequest
+            [enum SDORequestCommand 'command']
             [simple SDORequest 'request' ['command']]
         ]
-        ['CANOpenService.RECEIVE_SDO' CANOpenSDOResponse
-            [enum SDOCommand 'command']
+        ['CANOpenService.TRANSMIT_SDO' CANOpenSDOResponse
+            [enum SDOResponseCommand 'command']
             [simple SDOResponse 'response' ['command']]
         ]
         ['CANOpenService.HEARTBEAT' CANOpenHeartbeatPayload
@@ -98,48 +98,102 @@
     ]
 ]
 
-[type 'SDORequest' [SDOCommand 'command']
+[type 'SDORequest' [SDORequestCommand 'command']
     [typeSwitch 'command'
-        ['SDOCommand.INITIALIZE_DOWNLOAD' SDOInitializeDownloadRequest
-            [reserved uint 1 '0x00']
-            [implicit uint 2 'size' 'expedited && indicated ? 4 - COUNT(data) : 0']
-            [simple bit 'expedited']
-            [simple bit 'indicated']
-            [simple Multiplexer 'address']
-            [array int 8 'data' COUNT '(expedited && indicated) ? 4 - size : 0']
-            [padding uint 8 'alignment' '0x00' '4 - (COUNT(data))']
-        ]
-        ['SDOCommand.SEGMENT_DOWNLOAD' SDOSegmentDownloadRequest
+        ['SDORequestCommand.SEGMENT_DOWNLOAD' SDOSegmentDownloadRequest
             [simple bit 'toggle']
             [implicit uint 3 'size' '7 - COUNT(data)']
             [simple bit 'last']
-            [array int 8 'data' COUNT '7 - data']
-            [padding uint 8 'alignment' '0x00' '7 - (COUNT(data))']
+            [array int 8 'data' COUNT '7 - size']
+            [padding uint 8 'alignment' '0x00' '7 - COUNT(data)']
         ]
-        ['SDOCommand.INITIALIZE_UPLOAD' SDOInitializeUploadRequest
+        ['SDORequestCommand.INITIATE_DOWNLOAD' SDOInitiateDownloadRequest
+            [reserved uint 1 '0x00']
+            [implicit uint 2 'size' 'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.count", expedited, indicated, payload)']
+            [simple bit 'expedited']
+            [simple bit 'indicated']
+            [simple IndexAddress 'address']
+            [simple SDOInitiateUploadResponsePayload 'payload' ['expedited', 'indicated', 'size']]
+        ]
+        ['SDORequestCommand.INITIATE_UPLOAD' SDOInitiateUploadRequest
             [reserved uint 5 '0x00']
-            [simple Multiplexer 'address']
+            [simple IndexAddress 'address']
             [reserved int 32 '0x00'] // padding
+        ]
+        ['SDORequestCommand.SEGMENT_UPLOAD' SDOSegmentUploadRequest
+            [simple bit 'toggle']
+            [reserved uint 4 '0x00']
+            [reserved int 56 '0x00'] // padding
+        ]
+        ['SDORequestCommand.ABORT' SDOAbortRequest
+            [simple SDOAbort 'abort']
+        ]
+        ['SDORequestCommand.BLOCK' SDOBlockRequest
+            [simple SDOBlockData 'block']
         ]
     ]
 ]
 
-[type 'SDOResponse' [SDOCommand 'command']
+[type 'SDOBlockData'
+    [simple uint 5 'flags']
+    [array int 8 'data' COUNT '7']
+]
+
+[type 'SDOResponse' [SDOResponseCommand 'command']
     [typeSwitch 'command'
-        ['SDOCommand.SEGMENT_UPLOAD' SDOSegmentUploadResponse
-            [reserved uint 5 '0x00']
-            [simple Multiplexer 'address']
-            [reserved int 32 '0x00'] // padding
-        ]
-        ['SDOCommand.INITIALIZE_DOWNLOAD' SDOInitializeDownloadResponse
+        ['SDOResponseCommand.SEGMENT_UPLOAD' SDOSegmentUploadResponse
             [simple bit 'toggle']
-            [reserved uint 4 '0x00']
+            [implicit uint 3 'size' '7 - COUNT(data)']
+            [simple bit 'last']
+            [array int 8 'data' COUNT '7 - size']
+            [padding uint 8 'alignment' '0x00' '7 - COUNT(data)']
+        ]
+        ['SDOResponseCommand.SEGMENT_DOWNLOAD' SDOSegmentDownloadResponse
+            [simple bit 'toggle']
+            [reserved uint 4 '0x00'] // fill first byte
+            [reserved int 56 '0x00'] // padding
+        ]
+        ['SDOResponseCommand.INITIATE_UPLOAD' SDOInitiateUploadResponse
+            [reserved uint 1 '0x00']
+            [implicit uint 2 'size' 'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.count", expedited, indicated, payload)']
+            [simple bit 'expedited']
+            [simple bit 'indicated']
+            [simple IndexAddress 'address']
+            [simple SDOInitiateUploadResponsePayload 'payload' ['expedited', 'indicated', 'size']]
+        ]
+        ['SDOResponseCommand.INITIATE_DOWNLOAD' SDOInitiateDownloadResponse
+            [reserved uint 5 '0x00']
+            [simple IndexAddress 'address']
             [reserved int 32 '0x00'] // padding
         ]
-        ['SDOCommand.INITIALIZE_UPLOAD' SDOInitializeUploadResponse
-            [simple SDOSegment 'segment']
+        ['SDOResponseCommand.ABORT' SDOAbortResponse
+            [simple SDOAbort 'abort']
+        ]
+        ['SDOResponseCommand.BLOCK' SDOBlockResponse
+            [simple SDOBlockData 'block']
         ]
     ]
+]
+
+[type 'SDOInitiateUploadResponsePayload' [bit 'expedited', bit 'indicated', uint 2 'size']
+    [typeSwitch 'expedited', 'indicated'
+        ['true', 'true' SDOInitiateExpeditedUploadResponse [uint 2 'size']
+            [array int 8 'data' COUNT '4 - size']
+            [padding uint 8 'alignment' '0x00' '4 - COUNT(data)']
+        ]
+        ['false', 'true' SDOInitiateSegmentedUploadResponse
+            [simple uint 32 'bytes']
+        ]
+        ['false', 'false' SDOInitiateSegmentedReservedResponse
+            [reserved int 32 '0x00']
+        ]
+    ]
+]
+
+[type 'SDOAbort'
+    [reserved uint 5 '0x00']
+    [simple IndexAddress 'address']
+    [simple uint 32 'code']
 ]
 
 [type 'SDOSegment'
@@ -147,33 +201,140 @@
     [implicit uint 2 'size' 'expedited && indicated ? 4 - COUNT(data) : 0']
     [simple bit 'expedited']
     [simple bit 'indicated']
-    [simple Multiplexer 'address']
+    [simple IndexAddress 'address']
     [array int 8 'data' COUNT '(expedited && indicated) ? 4 - size : 0']
     [padding uint 8 'alignment' '0x00' '4 - (COUNT(data))']
 ]
 
-[type 'Multiplexer'
+[type 'IndexAddress'
     [simple uint 16 'index']
     [simple uint 8 'subindex']
 ]
 
-[enum uint 3 'SDOCommand'
-    ['0x00' SEGMENT_DOWNLOAD]
-    ['0x01' INITIALIZE_DOWNLOAD]
-    ['0x02' INITIALIZE_UPLOAD]
-    ['0x03' SEGMENT_UPLOAD]
-    ['0x04' ABORT]
-    ['0x05' BLOCK_UPLOAD]
-    ['0x06' BLOCK_DOWNLOAD]
+[enum uint 3 'SDORequestCommand'
+    ['0x00' SEGMENT_DOWNLOAD  ]
+    ['0x01' INITIATE_DOWNLOAD ]
+    ['0x02' INITIATE_UPLOAD   ]
+    ['0x03' SEGMENT_UPLOAD    ]
+    ['0x04' ABORT             ]
+    ['0x05' BLOCK             ]
+]
+
+[enum uint 3 'SDOResponseCommand'
+    ['0x00' SEGMENT_UPLOAD    ]
+    ['0x01' SEGMENT_DOWNLOAD  ]
+    ['0x02' INITIATE_UPLOAD   ]
+    ['0x03' INITIATE_DOWNLOAD ]
+    ['0x04' ABORT             ]
+    ['0x06' BLOCK             ]
 ]
 
 [type 'CANOpenPDO' [uint 2 'index', bit 'receive']
     [array int 8 'data' COUNT '8']
 ]
 
-[type 'TimeOfDay'
-    // CiA 301 - section 7.1.6.5
+[type 'CANOpenTime'
+    // CiA 301 - section 7.1.6.5 and 7.1.6.6
     [simple uint 28 'millis']
     [reserved int 4 '0x00']
     [simple uint 16 'days']
+]
+
+[enum 'CANOpenDataType' [uint 8 'numBits']
+    [BOOLEAN     [ '1'] ]
+    [UNSIGNED8   [ '8'] ]
+    [UNSIGNED16  ['16'] ]
+    [UNSIGNED24  ['24'] ]
+    [UNSIGNED32  ['32'] ]
+    [UNSIGNED40  ['40'] ]
+    [UNSIGNED48  ['48'] ]
+    [UNSIGNED56  ['56'] ]
+    [UNSIGNED64  ['64'] ]
+    [INTEGER8    [ '8'] ]
+    [INTEGER16   ['16'] ]
+    [INTEGER24   ['24'] ]
+    [INTEGER32   ['32'] ]
+    [INTEGER40   ['40'] ]
+    [INTEGER48   ['48'] ]
+    [INTEGER56   ['56'] ]
+    [INTEGER64   ['64'] ]
+    [REAL32      ['32'] ]
+    [REAL64      ['64'] ]
+
+    // compound/complex types
+    [OCTET_STRING     [ '8'] ]
+    [VISIBLE_STRING   [ '8'] ]
+    [UNICODE_STRING   ['16'] ]
+    [TIME_OF_DAY      ['48'] ]
+    [TIME_DIFFERENCE  ['48'] ]
+]
+
+[dataIo 'DataItem' [CANOpenDataType 'dataType']
+    [typeSwitch 'dataType'
+        ['CANOpenDataType.BOOLEAN' Boolean
+            [simple bit 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED8' Integer
+            [simple uint 8 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED16' Integer
+            [simple uint 16 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED24' Long
+            [simple uint 24 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED32' Long
+            [simple uint 32 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED40' BigInteger
+            [simple uint 40 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED48' BigInteger
+            [simple uint 48 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED56' BigInteger
+            [simple uint 56 'value']
+        ]
+        ['CANOpenDataType.UNSIGNED64' BigInteger
+            [simple uint 64 'value']
+        ]
+        ['CANOpenDataType.INTEGER8' Integer
+            [simple int 8 'value']
+        ]
+        ['CANOpenDataType.INTEGER16' Integer
+            [simple int 16 'value']
+        ]
+        ['CANOpenDataType.INTEGER24' Integer
+            [simple int 24 'value']
+        ]
+        ['CANOpenDataType.INTEGER32' Integer
+            [simple int 32 'value']
+        ]
+        ['CANOpenDataType.INTEGER40' Long
+            [simple int 40 'value']
+        ]
+        ['CANOpenDataType.INTEGER48' Long
+            [simple int 48 'value']
+        ]
+        ['CANOpenDataType.INTEGER56' Long
+            [simple int 56 'value']
+        ]
+        ['CANOpenDataType.INTEGER64' Long
+            [simple int 64 'value']
+        ]
+        ['CANOpenDataType.REAL32' Float
+            [simple float 8.23 'value']
+        ]
+        ['CANOpenDataType.REAL64' Double
+            [simple float 11.52 'value']
+        ]
+        ['CANOpenDataType.OCTET_STRING' String
+        ]
+        ['CANOpenDataType.VISIBLE_STRING' String
+        ]
+        //CANOpenDataType.TIME_OF_DAY' CANOpenTime
+        //CANOpenDataType.TIME_DIFFERENCE' CANOpenTime
+        ['CANOpenDataType.UNICODE_STRING' String
+        ]
+    ]
 ]

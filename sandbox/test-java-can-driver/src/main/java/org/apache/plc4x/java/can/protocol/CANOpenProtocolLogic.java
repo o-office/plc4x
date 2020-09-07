@@ -20,10 +20,8 @@ package org.apache.plc4x.java.can.protocol;
 
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
 import org.apache.plc4x.java.canopen.readwrite.CANOpenHeartbeatPayload;
-import org.apache.plc4x.java.canopen.readwrite.CANOpenNetworkPayload;
 import org.apache.plc4x.java.canopen.readwrite.CANOpenPayload;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenHeartbeatPayloadIO;
-import org.apache.plc4x.java.canopen.readwrite.io.CANOpenNetworkPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
 import org.apache.plc4x.java.canopen.readwrite.types.NMTState;
@@ -88,7 +86,14 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     @Override
     protected void decode(ConversationContext<SocketCANFrame> context, SocketCANFrame msg) throws Exception {
-        logger.info("Decode CAN message {}", msg);
+        CANOpenService service = serviceId(msg.getIdentifier());
+        CANOpenPayload payload = CANOpenPayloadIO.staticParse(new ReadBuffer(msg.getData()), service);
+
+        if (service != null) {
+            logger.info("Decoded CANOpen {} from {}, message {}", service, Math.abs(service.getMin() - msg.getIdentifier()), payload);
+        } else {
+            logger.info("CAN message {}, {}", msg.getIdentifier(), msg);
+        }
 
 //        int identifier = msg.getIdentifier();
 //        CANOpenService service = CANOpenService.valueOf((byte) (identifier >> 7));
@@ -107,7 +112,10 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     @Override
     public void onDisconnect(ConversationContext<SocketCANFrame> context) {
-
+        if (this.heartbeat != null) {
+            this.heartbeat.cancel();
+            this.heartbeat = null;
+        }
     }
 
     private int cobId(CANOpenService service) {
@@ -118,6 +126,14 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     private CANOpenService serviceId(int nodeId) {
         // form 32 bit socketcan identifier
-        return CANOpenService.valueOf((byte) (nodeId >> 7));
+        CANOpenService service = CANOpenService.valueOf((byte) (nodeId >> 7));
+        if (service == null) {
+            for (CANOpenService val : CANOpenService.values()) {
+                if (val.getMin() > nodeId && val.getMax() < nodeId) {
+                    return val;
+                }
+            }
+        }
+        return service;
     }
 }
