@@ -16,34 +16,35 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */
-package org.apache.plc4x.java.can.configuration;
+package org.apache.plc4x.java.can.field;
 
-import org.apache.plc4x.java.spi.configuration.Configuration;
-import org.apache.plc4x.java.spi.configuration.annotations.ConfigurationParameter;
-import org.apache.plc4x.java.transport.socketcan.CANTransportConfiguration;
+import org.apache.plc4x.java.api.exceptions.PlcInvalidFieldException;
+import org.junit.jupiter.api.Test;
 
-public class CANConfiguration implements Configuration, CANTransportConfiguration {
+import static org.junit.jupiter.api.Assertions.*;
 
-    @ConfigurationParameter
-    private int nodeId;
+class CANOpenNMTFieldTest {
 
-    @ConfigurationParameter
-    private boolean hearbeat;
+    @Test
+    public void testNodeSyntax() {
+        final CANOpenNMTField canField = CANOpenNMTField.of("NMT:20");
 
-    public int getNodeId() {
-        return nodeId;
+        assertEquals(20, canField.getNodeId());
+        assertFalse(canField.isWildcard());
     }
 
-    public void setNodeId(int nodeId) {
-        this.nodeId = nodeId;
+    @Test
+    public void testWildcardSyntax() {
+        final CANOpenNMTField canField = CANOpenNMTField.of("NMT:0");
+
+        assertEquals(0, canField.getNodeId());
+        assertTrue(canField.isWildcard());
     }
 
-    public boolean isHeartbeat() {
-        return hearbeat;
-    }
 
-    public void setHeartbeat(boolean heartbeat) {
-        this.hearbeat = heartbeat;
+    @Test
+    public void testInvalidSyntax() {
+        assertThrows(PlcInvalidFieldException.class, () -> CANOpenNMTField.of("NMT:"));
     }
 
 }

@@ -22,17 +22,17 @@
     ['0b0001' SYNC            ['0x80',  '0x80' , 'false' ] ]
     ['0b0001' EMCY            ['0x81',  '0xFF' , 'false' ] ]
     ['0b0010' TIME            ['0x100', '0x100', 'false' ] ]
-    ['0b0011' TRANSMIT_PDO_1  ['0x181', '0x1FF', 'true'  ] ]
-    ['0b0100' RECEIVE_PDO_1   ['0x201', '0x27F', 'true'  ] ]
-    ['0b0101' TRANSMIT_PDO_2  ['0x281', '0x2FF', 'true'  ] ]
-    ['0b0110' RECEIVE_PDO_2   ['0x301', '0x37F', 'true'  ] ]
-    ['0b0111' TRANSMIT_PDO_3  ['0x381', '0x3FF', 'true'  ] ]
-    ['0b1000' RECEIVE_PDO_3   ['0x401', '0x47F', 'true'  ] ]
-    ['0b1001' TRANSMIT_PDO_4  ['0x481', '0x4FF', 'true'  ] ]
-    ['0b1010' RECEIVE_PDO_4   ['0x501', '0x57F', 'true'  ] ]
-    ['0b1011' TRANSMIT_SDO    ['0x581', '0x5FF', 'false' ] ]
-    ['0b1100' RECEIVE_SDO     ['0x601', '0x67F', 'false' ] ]
-    ['0b1110' HEARTBEAT       ['0x701', '0x77F', 'false' ] ]
+    ['0b0011' TRANSMIT_PDO_1  ['0x180', '0x1FF', 'true'  ] ]
+    ['0b0100' RECEIVE_PDO_1   ['0x200', '0x27F', 'true'  ] ]
+    ['0b0101' TRANSMIT_PDO_2  ['0x280', '0x2FF', 'true'  ] ]
+    ['0b0110' RECEIVE_PDO_2   ['0x300', '0x37F', 'true'  ] ]
+    ['0b0111' TRANSMIT_PDO_3  ['0x380', '0x3FF', 'true'  ] ]
+    ['0b1000' RECEIVE_PDO_3   ['0x400', '0x47F', 'true'  ] ]
+    ['0b1001' TRANSMIT_PDO_4  ['0x480', '0x4FF', 'true'  ] ]
+    ['0b1010' RECEIVE_PDO_4   ['0x500', '0x57F', 'true'  ] ]
+    ['0b1011' TRANSMIT_SDO    ['0x580', '0x5FF', 'false' ] ]
+    ['0b1100' RECEIVE_SDO     ['0x600', '0x67F', 'false' ] ]
+    ['0b1110' HEARTBEAT       ['0x700', '0x77F', 'false' ] ]
 ]
 
 [enum uint 8 'NMTStateRequest'
@@ -262,6 +262,7 @@
     [REAL64      ['64'] ]
 
     // compound/complex types
+    [RECORD           [ '8'] ]
     [OCTET_STRING     [ '8'] ]
     [VISIBLE_STRING   [ '8'] ]
     [UNICODE_STRING   ['16'] ]
@@ -269,7 +270,7 @@
     [TIME_DIFFERENCE  ['48'] ]
 ]
 
-[dataIo 'DataItem' [CANOpenDataType 'dataType']
+[dataIo 'DataItem' [CANOpenDataType 'dataType', int 32 'size']
     [typeSwitch 'dataType'
         ['CANOpenDataType.BOOLEAN' Boolean
             [simple bit 'value']
@@ -328,13 +329,28 @@
         ['CANOpenDataType.REAL64' Double
             [simple float 11.52 'value']
         ]
+        ['CANOpenDataType.RECORD' List
+            [array int 8 'value' length 'size']
+        ]
         ['CANOpenDataType.OCTET_STRING' String
+            [manual string 'UTF-8' 'value'
+                'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.parseString", io, size, _type.encoding)'
+                'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.serializeString", io, _value, _type.encoding)' '_value.length'
+            ]
         ]
         ['CANOpenDataType.VISIBLE_STRING' String
+            [manual string 'UTF-8' 'value'
+                'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.parseString", io, size, _type.encoding)'
+                'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.serializeString", io, _value, _type.encoding)' '_value.length'
+            ]
         ]
         //CANOpenDataType.TIME_OF_DAY' CANOpenTime
         //CANOpenDataType.TIME_DIFFERENCE' CANOpenTime
         ['CANOpenDataType.UNICODE_STRING' String
+            [manual string 'UTF-8' 'value'
+                'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.parseString", io, size, _type.encoding)'
+                'STATIC_CALL("org.apache.plc4x.java.can.helper.CANOpenHelper.serializeString", io, _value, _type.encoding)' '_value.length'
+            ]
         ]
     ]
 ]

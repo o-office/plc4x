@@ -16,34 +16,35 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */
-package org.apache.plc4x.java.can.configuration;
+package org.apache.plc4x.java.can.api.segmentation.accumulator;
 
-import org.apache.plc4x.java.spi.configuration.Configuration;
-import org.apache.plc4x.java.spi.configuration.annotations.ConfigurationParameter;
-import org.apache.plc4x.java.transport.socketcan.CANTransportConfiguration;
+/**
+ * A storage which is called for each received segment.
+ *
+ * @param <T> Type of frame.
+ * @param <R> Type of result.
+ */
+public interface Storage<T, R> {
 
-public class CANConfiguration implements Configuration, CANTransportConfiguration {
+    /**
+     * Appends segmented frame.
+     *
+     * @param frame Segmented frame.
+     */
+    void append(T frame);
 
-    @ConfigurationParameter
-    private int nodeId;
+    /**
+     * Gets accumulated size of stored data.
+     *
+     * @return Occupied memory in bytes.
+     */
+    long size();
 
-    @ConfigurationParameter
-    private boolean hearbeat;
-
-    public int getNodeId() {
-        return nodeId;
-    }
-
-    public void setNodeId(int nodeId) {
-        this.nodeId = nodeId;
-    }
-
-    public boolean isHeartbeat() {
-        return hearbeat;
-    }
-
-    public void setHeartbeat(boolean heartbeat) {
-        this.hearbeat = heartbeat;
-    }
+    /**
+     * Retrieves final result from segmented payload.
+     *
+     * @return Assembled result.
+     */
+    R get();
 
 }

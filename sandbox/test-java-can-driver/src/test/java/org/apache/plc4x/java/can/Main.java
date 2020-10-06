@@ -20,6 +20,15 @@ package org.apache.plc4x.java.can;
 
 import org.apache.plc4x.java.PlcDriverManager;
 import org.apache.plc4x.java.api.PlcConnection;
+import org.apache.plc4x.java.api.messages.PlcReadRequest;
+import org.apache.plc4x.java.api.messages.PlcReadResponse;
+import org.apache.plc4x.java.api.messages.PlcWriteResponse;
+import org.apache.plc4x.java.can.context.CANOpenDriverContext;
+import org.apache.plc4x.java.can.listener.Callback;
+import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
+
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Here we begin .. ;-)
@@ -29,8 +38,47 @@ public class Main {
     public static void main(String[] args) throws Exception {
         PlcDriverManager driverManager = new PlcDriverManager();
 
+        CANOpenDriverContext.CALLBACK.addCallback(new Callback() {
+            @Override
+            public void receive(SocketCANFrame frame) {
+                //System.err.println("Received frame " + frame);
+            }
+        });
+
         PlcConnection connection = driverManager.getConnection("canopen:javacan://vcan0?nodeId=11");
 
+        String value = "abcdef"; //UUID.randomUUID().toString();
+        CompletableFuture<? extends PlcWriteResponse> response = connection.writeRequestBuilder()
+            .addItem("foo", "SDO:13:0x2000/0x0:VISIBLE_STRING", value)
+            .build().execute();
+
+        response.whenComplete((writeReply, writeError) -> {
+            System.out.println("====================================");
+            if (writeError != null) {
+                System.out.println("Error ");
+                writeError.printStackTrace();
+            } else {
+                System.out.println("Result " + writeReply.getResponseCode("foo") + " " + value);
+
+                PlcReadRequest.Builder builder = connection.readRequestBuilder();
+                builder.addItem("foo", "SDO:13:0x2000/0x0:VISIBLE_STRING");
+                CompletableFuture<? extends PlcReadResponse> future = builder.build().execute();
+                future.whenComplete((readReply, readError) -> {
+                    System.out.println("====================================");
+                    if (readError != null) {
+                        System.out.println("Error ");
+                        readError.printStackTrace();
+                    } else {
+                        System.out.println("Result " + readReply.getString("foo"));
+                    }
+                });
+            }
+        });
+
+
+//        while (true) {
+
+//        }
     }
 
 }

@@ -16,34 +16,23 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */
-package org.apache.plc4x.java.can.configuration;
+package org.apache.plc4x.java.can.field;
 
-import org.apache.plc4x.java.spi.configuration.Configuration;
-import org.apache.plc4x.java.spi.configuration.annotations.ConfigurationParameter;
-import org.apache.plc4x.java.transport.socketcan.CANTransportConfiguration;
+import org.apache.plc4x.java.canopen.readwrite.types.CANOpenDataType;
+import org.junit.jupiter.api.Test;
 
-public class CANConfiguration implements Configuration, CANTransportConfiguration {
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-    @ConfigurationParameter
-    private int nodeId;
+class CANOpenFieldSDOTest {
 
-    @ConfigurationParameter
-    private boolean hearbeat;
+    @Test
+    public void testFieldSyntax() {
+        final CANOpenSDOField canField = CANOpenSDOField.of("SDO:20:0x30/40:BOOLEAN");
 
-    public int getNodeId() {
-        return nodeId;
-    }
-
-    public void setNodeId(int nodeId) {
-        this.nodeId = nodeId;
-    }
-
-    public boolean isHeartbeat() {
-        return hearbeat;
-    }
-
-    public void setHeartbeat(boolean heartbeat) {
-        this.hearbeat = heartbeat;
+        assertEquals(20, canField.getNodeId());
+        assertEquals(0x30, canField.getIndex());
+        assertEquals(40, canField.getSubIndex());
+        assertEquals(CANOpenDataType.BOOLEAN, canField.getCanOpenDataType());
     }
 
 }

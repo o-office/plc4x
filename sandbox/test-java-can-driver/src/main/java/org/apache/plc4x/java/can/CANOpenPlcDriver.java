@@ -19,21 +19,18 @@
 package org.apache.plc4x.java.can;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
-import org.apache.plc4x.java.can.context.CANDriverContext;
+import org.apache.plc4x.java.can.context.CANOpenDriverContext;
 import org.apache.plc4x.java.can.field.CANFieldHandler;
+import org.apache.plc4x.java.can.field.CANOpenFieldHandler;
 import org.apache.plc4x.java.can.protocol.CANOpenProtocolLogic;
-import org.apache.plc4x.java.can.protocol.CANProtocolLogic;
 import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
 import org.apache.plc4x.java.socketcan.readwrite.io.SocketCANFrameIO;
 import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
 import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.connection.SingleProtocolStackConfigurer;
-import tel.schich.javacan.CanFrame;
 
-import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
 
 /**
@@ -56,21 +53,32 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
     }
 
     @Override
+    protected boolean canRead() {
+        return true;
+    }
+
+    @Override
+    protected boolean canWrite() {
+        return true;
+    }
+
+    @Override
     protected String getDefaultTransport() {
         return "javacan";
     }
 
     @Override
-    protected CANFieldHandler getFieldHandler() {
-        return new CANFieldHandler();
+    protected CANOpenFieldHandler getFieldHandler() {
+        return new CANOpenFieldHandler();
     }
 
     @Override
     protected ProtocolStackConfigurer<SocketCANFrame> getStackConfigurer() {
         return SingleProtocolStackConfigurer.builder(SocketCANFrame.class, SocketCANFrameIO.class)
             .withProtocol(CANOpenProtocolLogic.class)
-            .withDriverContext(CANDriverContext.class)
+            .withDriverContext(CANOpenDriverContext.class)
             .withPacketSizeEstimator(CANEstimator.class)
+            .littleEndian()
             .build();
     }
 
