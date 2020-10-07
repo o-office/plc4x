@@ -441,6 +441,10 @@ public class PlcValues {
         if(o == null) {
             return new PlcNull();
         }
+        if (o instanceof Byte) {
+            return new PlcBYTE((Byte) o);
+        }
+
         try {
             String simpleName = o.getClass().getSimpleName();
             Class<?> clazz = o.getClass();

@@ -19,8 +19,12 @@ under the License.
 package org.apache.plc4x.java.can.protocol;
 
 import org.apache.plc4x.java.api.messages.*;
+import org.apache.plc4x.java.api.model.PlcConsumerRegistration;
 import org.apache.plc4x.java.api.model.PlcField;
+import org.apache.plc4x.java.api.model.PlcSubscriptionHandle;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
+import org.apache.plc4x.java.api.types.PlcSubscriptionType;
+import org.apache.plc4x.java.api.value.PlcList;
 import org.apache.plc4x.java.api.value.PlcNull;
 import org.apache.plc4x.java.api.value.PlcValue;
 import org.apache.plc4x.java.can.api.CANFrame;
@@ -31,6 +35,7 @@ import org.apache.plc4x.java.can.api.conversation.canopen.SDOUploadConversation;
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
 import org.apache.plc4x.java.can.context.CANOpenDriverContext;
 import org.apache.plc4x.java.can.field.CANOpenField;
+import org.apache.plc4x.java.can.field.CANOpenPDOField;
 import org.apache.plc4x.java.can.field.CANOpenSDOField;
 import org.apache.plc4x.java.can.socketcan.SocketCANConversation;
 import org.apache.plc4x.java.canopen.readwrite.*;
@@ -49,18 +54,28 @@ import org.apache.plc4x.java.spi.generation.ReadBuffer;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
 import org.apache.plc4x.java.spi.messages.*;
 import org.apache.plc4x.java.spi.messages.utils.ResponseItem;
+import org.apache.plc4x.java.spi.model.DefaultPlcConsumerRegistration;
+import org.apache.plc4x.java.spi.model.InternalPlcSubscriptionHandle;
+import org.apache.plc4x.java.spi.model.SubscriptionPlcField;
 import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
-public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> implements HasConfiguration<CANConfiguration> {
+public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> implements HasConfiguration<CANConfiguration>, PlcSubscriber {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10L);
     private Logger logger = LoggerFactory.getLogger(CANOpenProtocolLogic.class);
@@ -70,6 +85,8 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     private Timer heartbeat;
     private CANOpenDriverContext canContext;
     private CANConversation<CANFrame> conversation;
+
+    private Map<DefaultPlcConsumerRegistration, Consumer<PlcSubscriptionEvent>> consumers = new ConcurrentHashMap<>();
 
     @Override
     public void setConfiguration(CANConfiguration configuration) {
@@ -130,7 +147,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     public CompletableFuture<PlcWriteResponse> write(PlcWriteRequest writeRequest) {
         CompletableFuture<PlcWriteResponse> response = new CompletableFuture<>();
         if (writeRequest.getFieldNames().size() != 1) {
-            response.completeExceptionally(new IllegalArgumentException("Unsupported field"));
+            response.completeExceptionally(new IllegalArgumentException("You can write only one field at the time"));
             return response;
         }
 
@@ -140,12 +157,16 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
             return response;
         }
 
-        if (!(field instanceof CANOpenSDOField)) {
-            response.completeExceptionally(new IllegalArgumentException("Only CANOpenSDOField instances are supported"));
+        if (field instanceof CANOpenSDOField) {
+            writeInternally((InternalPlcWriteRequest) writeRequest, (CANOpenSDOField) field, response);
             return response;
-        };
+        }
+        if (field instanceof CANOpenPDOField) {
+            writeInternally((InternalPlcWriteRequest) writeRequest, (CANOpenPDOField) field, response);
+            return response;
+        }
 
-        writeInternally((InternalPlcWriteRequest) writeRequest, (CANOpenSDOField) field, response);
+        response.completeExceptionally(new IllegalArgumentException("Only CANOpenSDOField instances are supported"));
         return response;
     }
 
@@ -158,10 +179,26 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
         try {
             download.execute((value, error) -> {
                 String fieldName = writeRequest.getFieldNames().iterator().next();
-                Map<String, PlcResponseCode> fields = new HashMap<>();
-                fields.put(fieldName, PlcResponseCode.OK);
-                response.complete(new DefaultPlcWriteResponse(writeRequest, fields));
+                response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.OK)));
             });
+        } catch (Exception e) {
+            response.completeExceptionally(e);
+        }
+    }
+
+    private void writeInternally(InternalPlcWriteRequest writeRequest, CANOpenPDOField field, CompletableFuture<PlcWriteResponse> response) {
+        PlcValue writeValue = writeRequest.getPlcValues().get(0);
+
+        try {
+            String fieldName = writeRequest.getFieldNames().iterator().next();
+            //
+            WriteBuffer buffer = DataItemIO.staticSerialize(writeValue, field.getCanOpenDataType(), writeValue.getLength() / 8, true);
+            if (buffer != null) {
+                context.sendToWire(new SocketCANFrame(field.getNodeId(), buffer.getData()));
+                response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.OK)));
+            } else {
+                response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.INVALID_DATA)));
+            }
         } catch (Exception e) {
             response.completeExceptionally(e);
         }
@@ -190,9 +227,28 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     @Override
-    public CompletableFuture<PlcSubscriptionResponse> subscribe(PlcSubscriptionRequest subscriptionRequest) {
-        ((InternalPlcSubscriptionRequest) subscriptionRequest).getSubscriptionFields().get(0).getPlcSubscriptionType();
-        return super.subscribe(subscriptionRequest);
+    public CompletableFuture<PlcSubscriptionResponse> subscribe(PlcSubscriptionRequest request) {
+        InternalPlcSubscriptionRequest rq = (InternalPlcSubscriptionRequest) request;
+
+        List<SubscriptionPlcField> fields = rq.getSubscriptionFields();
+
+        Map<String, ResponseItem<PlcSubscriptionHandle>> answers = new LinkedHashMap<>();
+        DefaultPlcSubscriptionResponse response = new DefaultPlcSubscriptionResponse(rq, answers);
+
+        for (Map.Entry<String, SubscriptionPlcField> entry : rq.getSubscriptionPlcFieldMap().entrySet()) {
+            SubscriptionPlcField subscription = entry.getValue();
+            if (subscription.getPlcSubscriptionType() != PlcSubscriptionType.EVENT) {
+                answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.UNSUPPORTED, null));
+            } else if (!(subscription.getPlcField() instanceof CANOpenPDOField)) {
+                answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.INVALID_ADDRESS, null));
+            } else {
+                answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.OK,
+                    new CANOpenSubscriptionHandle(this, entry.getKey(), (CANOpenPDOField) subscription.getPlcField())
+                ));
+            }
+        }
+
+        return CompletableFuture.completedFuture(response);
     }
 
     private void readInternally(InternalPlcReadRequest readRequest, CANOpenSDOField field, CompletableFuture<PlcReadResponse> response) {
@@ -220,6 +276,12 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
         if (service != null) {
             logger.info("Decoded CANOpen {} from {}, message {}", service, Math.abs(service.getMin() - msg.getIdentifier()), payload);
+
+            if (service.getPdo() && payload instanceof CANOpenPDOPayload) {
+                logger.info("Broadcasting PDO to subscribers");
+                publishEvent(msg.getIdentifier(), (CANOpenPDOPayload) payload);
+            }
+
         } else {
             logger.info("CAN message {}, {}", msg.getIdentifier(), msg);
         }
@@ -232,6 +294,57 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 //
 //
 //        }
+    }
+
+    private void publishEvent(int nodeId, CANOpenPDOPayload payload) {
+        for (Map.Entry<DefaultPlcConsumerRegistration, Consumer<PlcSubscriptionEvent>> entry : consumers.entrySet()) {
+            DefaultPlcConsumerRegistration registration = entry.getKey();
+            Consumer<PlcSubscriptionEvent> consumer = entry.getValue();
+
+            for (InternalPlcSubscriptionHandle handler : registration.getAssociatedHandles()) {
+                if (handler instanceof CANOpenSubscriptionHandle) {
+                    CANOpenSubscriptionHandle handle = (CANOpenSubscriptionHandle) handler;
+
+                    if (handle.matches(nodeId)) {
+                        CANOpenPDOField field = handle.getField();
+                        byte[] data = payload.getPdo().getData();
+                        try {
+                            PlcValue value = DataItemIO.staticParse(new ReadBuffer(data, true), field.getCanOpenDataType(), data.length);
+                            DefaultPlcSubscriptionEvent event = new DefaultPlcSubscriptionEvent(
+                                Instant.now(),
+                                Collections.singletonMap(
+                                    handle.getName(),
+                                    new ResponseItem<>(PlcResponseCode.OK, value)
+                                )
+                            );
+                            consumer.accept(event);
+                        } catch (ParseException e) {
+                            logger.warn("Could not parse data to desired type: {}", field.getCanOpenDataType(), e);
+                            DefaultPlcSubscriptionEvent event = new DefaultPlcSubscriptionEvent(
+                                Instant.now(),
+                                Collections.singletonMap(
+                                    handle.getName(),
+                                    new ResponseItem<>(PlcResponseCode.INVALID_DATA, new PlcNull())
+                                )
+                            );
+                            consumer.accept(event);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public PlcConsumerRegistration register(Consumer<PlcSubscriptionEvent> consumer, Collection<PlcSubscriptionHandle> handles) {
+        final DefaultPlcConsumerRegistration consumerRegistration =new DefaultPlcConsumerRegistration(this, consumer, handles.toArray(new InternalPlcSubscriptionHandle[0]));
+        consumers.put(consumerRegistration, consumer);
+        return consumerRegistration;
+    }
+
+    @Override
+    public void unregister(PlcConsumerRegistration registration) {
+        consumers.remove(registration);
     }
 
     @Override

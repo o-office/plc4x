@@ -272,64 +272,64 @@
 
 [dataIo 'DataItem' [CANOpenDataType 'dataType', int 32 'size']
     [typeSwitch 'dataType'
-        ['CANOpenDataType.BOOLEAN' Boolean
+        ['CANOpenDataType.BOOLEAN' BOOL
             [simple bit 'value']
         ]
-        ['CANOpenDataType.UNSIGNED8' Integer
+        ['CANOpenDataType.UNSIGNED8' USINT
             [simple uint 8 'value']
         ]
-        ['CANOpenDataType.UNSIGNED16' Integer
+        ['CANOpenDataType.UNSIGNED16' UINT
             [simple uint 16 'value']
         ]
-        ['CANOpenDataType.UNSIGNED24' Long
+        ['CANOpenDataType.UNSIGNED24' UDINT
             [simple uint 24 'value']
         ]
-        ['CANOpenDataType.UNSIGNED32' Long
+        ['CANOpenDataType.UNSIGNED32' UDINT
             [simple uint 32 'value']
         ]
-        ['CANOpenDataType.UNSIGNED40' BigInteger
+        ['CANOpenDataType.UNSIGNED40' ULINT
             [simple uint 40 'value']
         ]
-        ['CANOpenDataType.UNSIGNED48' BigInteger
+        ['CANOpenDataType.UNSIGNED48' ULINT
             [simple uint 48 'value']
         ]
-        ['CANOpenDataType.UNSIGNED56' BigInteger
+        ['CANOpenDataType.UNSIGNED56' ULINT
             [simple uint 56 'value']
         ]
-        ['CANOpenDataType.UNSIGNED64' BigInteger
+        ['CANOpenDataType.UNSIGNED64' ULINT
             [simple uint 64 'value']
         ]
-        ['CANOpenDataType.INTEGER8' Integer
+        ['CANOpenDataType.INTEGER8' SINT
             [simple int 8 'value']
         ]
-        ['CANOpenDataType.INTEGER16' Integer
+        ['CANOpenDataType.INTEGER16' INT
             [simple int 16 'value']
         ]
-        ['CANOpenDataType.INTEGER24' Integer
+        ['CANOpenDataType.INTEGER24' DINT
             [simple int 24 'value']
         ]
-        ['CANOpenDataType.INTEGER32' Integer
+        ['CANOpenDataType.INTEGER32' DINT
             [simple int 32 'value']
         ]
-        ['CANOpenDataType.INTEGER40' Long
+        ['CANOpenDataType.INTEGER40' LINT
             [simple int 40 'value']
         ]
-        ['CANOpenDataType.INTEGER48' Long
+        ['CANOpenDataType.INTEGER48' LINT
             [simple int 48 'value']
         ]
-        ['CANOpenDataType.INTEGER56' Long
+        ['CANOpenDataType.INTEGER56' LINT
             [simple int 56 'value']
         ]
-        ['CANOpenDataType.INTEGER64' Long
+        ['CANOpenDataType.INTEGER64' LINT
             [simple int 64 'value']
         ]
-        ['CANOpenDataType.REAL32' Float
+        ['CANOpenDataType.REAL32' REAL
             [simple float 8.23 'value']
         ]
-        ['CANOpenDataType.REAL64' Double
+        ['CANOpenDataType.REAL64' LREAL
             [simple float 11.52 'value']
         ]
-        ['CANOpenDataType.RECORD' List
+        ['CANOpenDataType.RECORD' List [int 32 'size']
             [array int 8 'value' length 'size']
         ]
         ['CANOpenDataType.OCTET_STRING' String

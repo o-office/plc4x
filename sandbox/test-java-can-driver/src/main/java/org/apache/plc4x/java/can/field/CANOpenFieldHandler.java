@@ -21,13 +21,13 @@ package org.apache.plc4x.java.can.field;
 import org.apache.plc4x.java.api.exceptions.PlcInvalidFieldException;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.model.PlcField;
-import org.apache.plc4x.java.api.value.PlcList;
-import org.apache.plc4x.java.api.value.PlcString;
-import org.apache.plc4x.java.api.value.PlcValue;
+import org.apache.plc4x.java.api.value.*;
 import org.apache.plc4x.java.spi.connection.DefaultPlcFieldHandler;
 import org.apache.plc4x.java.spi.connection.PlcFieldHandler;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class CANOpenFieldHandler extends DefaultPlcFieldHandler implements PlcFieldHandler {
@@ -54,5 +54,19 @@ public class CANOpenFieldHandler extends DefaultPlcFieldHandler implements PlcFi
         }
 
         throw new PlcRuntimeException("Invalid encoder for type " + coField.getCanOpenDataType().name());
+    }
+
+    @Override
+    public PlcValue encodeByte(PlcField field, Object[] values) {
+        List<PlcValue> resultSet = new ArrayList<>();
+        for (Object item : values) {
+            resultSet.add(PlcValues.of((Byte) item));
+        }
+
+        if (resultSet.size() == 1) {
+            return resultSet.get(0);
+        } else {
+            return new PlcList(resultSet);
+        }
     }
 }

@@ -119,10 +119,21 @@ public class ${type.name}IO {
                             <#if helper.isLengthArrayField(field)>
             // Length array
             int _${field.name}Length = ${helper.toParseExpression(field, field.loopExpression, type.parserArguments)};
-            List<${helper.getNonPrimitiveLanguageTypeNameForField(field)}> _${field.name}List = new LinkedList<>();
+            List<PlcValue> _${field.name}List = new LinkedList<>();
             int ${field.name}EndPos = io.getPos() + _${field.name}Length;
             while(io.getPos() < ${field.name}EndPos) {
-                _${field.name}List.add(<#if helper.isSimpleTypeReference(field.type)>${helper.getReadBufferReadMethodCall(field.type)}<#else>${field.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(field.type, parserArgument?index), true)}) (${helper.toParseExpression(field, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>);
+                _${field.name}List.add(
+                    <#if helper.isSimpleTypeReference(field.type)>PlcValues.of(${helper.getReadBufferReadMethodCall(field.type)})
+                    <#else>${field.type.name}IO.staticParse(io
+                        <#if field.params?has_content>,
+                            <#list field.params as parserArgument>
+                                (${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(field.type, parserArgument?index), true)}) (${helper.toParseExpression(field, parserArgument, type.parserArguments)})
+                                <#sep>, </#sep>
+                            </#list>
+                        </#if>
+                    )
+                    </#if>
+                );
                 <#-- After parsing, update the current position, but only if it's needed -->
                                 <#if field.loopExpression.contains("curPos")>
                 curPos = io.getPos() - startPos;
@@ -145,7 +156,6 @@ public class ${type.name}IO {
                 Convert the list into an array. However if the array is of a primitive
                 type we have to iterate over it's elements and explicitly cast them.
                 Otherwise a simple toArray call is fine.
-            -->
                             <#if helper.isSimpleTypeReference(field.type)>
             ${helper.getNonPrimitiveLanguageTypeNameForField(field)}[] ${field.name} = new ${helper.getNonPrimitiveLanguageTypeNameForField(field)}[_${field.name}List.size()];
             for(int i = 0; i < _${field.name}List.size(); i++) {
@@ -154,6 +164,9 @@ public class ${type.name}IO {
                             <#else>
             ${helper.getNonPrimitiveLanguageTypeNameForField(field)}[] ${field.name} = _${field.name}List.toArray(new ${helper.getNonPrimitiveLanguageTypeNameForField(field)}[0]);
                             </#if>
+
+            -->
+            List<?> value = _${field.name}List;
                         </#if>
                     <#break>
                     <#case "const">

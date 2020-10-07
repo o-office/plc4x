@@ -58,6 +58,11 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
     }
 
     @Override
+    protected boolean canSubscribe() {
+        return true;
+    }
+
+    @Override
     protected boolean canWrite() {
         return true;
     }
