@@ -9,16 +9,23 @@ import org.apache.plc4x.java.spi.ConversationContext.SendRequestContext;
 import org.apache.plc4x.java.spi.generation.ParseException;
 import org.apache.plc4x.java.spi.generation.ReadBuffer;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
+import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
 import org.apache.plc4x.java.spi.transaction.RequestTransactionManager.RequestTransaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 public class CANOpenConversation<W extends CANFrame> {
 
+    private final Logger logger = LoggerFactory.getLogger(CANOpenConversation.class);
+    private final RequestTransaction transaction;
     private final int node;
     private final CANConversation<W> delegate;
 
-    public CANOpenConversation(int node, CANConversation<W> delegate) {
+    public CANOpenConversation(RequestTransaction transaction, int node, CANConversation<W> delegate) {
+        this.transaction = transaction;
         this.node = node;
         this.delegate = delegate;
     }
@@ -30,7 +37,8 @@ public class CANOpenConversation<W extends CANFrame> {
     public void send(CANOpenService service, CANOpenPayload payload, BiConsumer<RequestTransaction, SendRequestContext<CANOpenPayload>> callback) {
         CANFrameBuilder<W> builder = delegate.frameBuilder();
         W frame = builder.node(service.getMin() + node).data(serialize(payload)).build();
-        delegate.send(frame, (tx, ctx) -> {
+        logger.info("Request data under transaction {}", transaction);
+        delegate.send(transaction, frame, (tx, ctx) -> {
             SendRequestContext<CANOpenPayload> unwrap = ctx
 //                .onError((response, error) -> {
 //                    System.err.println("Unexpected frame " + response + " " + error);
@@ -38,6 +46,8 @@ public class CANOpenConversation<W extends CANFrame> {
             .unwrap(CANOpenConversation.this::deserialize);
             callback.accept(tx, unwrap);
         });
+
+
     }
 
     private CANOpenPayload deserialize(CANFrame frame) {

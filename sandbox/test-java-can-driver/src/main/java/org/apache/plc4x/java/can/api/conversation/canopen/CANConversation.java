@@ -9,9 +9,11 @@ import org.apache.plc4x.java.spi.transaction.RequestTransactionManager.RequestTr
 
 public interface CANConversation<W extends CANFrame> {
 
+    int getNodeId();
+
     CANFrameBuilder<W> frameBuilder();
 
-    void send(W frame, BiConsumer<RequestTransaction, SendRequestContext<W>> callback);
+    void send(RequestTransaction transaction, W frame, BiConsumer<RequestTransaction, SendRequestContext<W>> callback);
 
 
 }

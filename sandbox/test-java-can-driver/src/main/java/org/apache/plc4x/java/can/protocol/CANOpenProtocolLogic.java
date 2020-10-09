@@ -18,6 +18,8 @@ under the License.
 */
 package org.apache.plc4x.java.can.protocol;
 
+import org.apache.commons.codec.binary.Hex;
+import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.messages.*;
 import org.apache.plc4x.java.api.model.PlcConsumerRegistration;
 import org.apache.plc4x.java.api.model.PlcField;
@@ -38,7 +40,10 @@ import org.apache.plc4x.java.can.field.CANOpenField;
 import org.apache.plc4x.java.can.field.CANOpenPDOField;
 import org.apache.plc4x.java.can.field.CANOpenSDOField;
 import org.apache.plc4x.java.can.socketcan.SocketCANConversation;
-import org.apache.plc4x.java.canopen.readwrite.*;
+import org.apache.plc4x.java.canopen.readwrite.CANOpenHeartbeatPayload;
+import org.apache.plc4x.java.canopen.readwrite.CANOpenPDOPayload;
+import org.apache.plc4x.java.canopen.readwrite.CANOpenPayload;
+import org.apache.plc4x.java.canopen.readwrite.IndexAddress;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenHeartbeatPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.DataItemIO;
@@ -61,6 +66,8 @@ import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -91,8 +98,6 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     @Override
     public void setConfiguration(CANConfiguration configuration) {
         this.configuration = configuration;
-        // Set the transaction manager to allow only one message at a time.
-        this.tm = new RequestTransactionManager(1);
     }
 
     @Override
@@ -135,7 +140,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     @Override
     public void setContext(ConversationContext<SocketCANFrame> context) {
         super.setContext(context);
-        this.conversation = new SocketCANConversation(tm, context);
+        this.conversation = new SocketCANConversation(configuration.getNodeId(), context);
     }
 
     private SocketCANFrame createFrame(CANOpenHeartbeatPayload state) throws ParseException {
@@ -171,7 +176,8 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     private void writeInternally(InternalPlcWriteRequest writeRequest, CANOpenSDOField field, CompletableFuture<PlcWriteResponse> response) {
-        CANOpenConversation<CANFrame> canopen = new CANOpenConversation<>(field.getNodeId(), conversation);
+        final RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
+        CANOpenConversation<CANFrame> canopen = new CANOpenConversation<>(transaction, field.getNodeId(), conversation);
 
         PlcValue writeValue = writeRequest.getPlcValues().get(0);
 
@@ -180,6 +186,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
             download.execute((value, error) -> {
                 String fieldName = writeRequest.getFieldNames().iterator().next();
                 response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.OK)));
+                transaction.endRequest();
             });
         } catch (Exception e) {
             response.completeExceptionally(e);
@@ -191,10 +198,10 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
         try {
             String fieldName = writeRequest.getFieldNames().iterator().next();
-            //
-            WriteBuffer buffer = DataItemIO.staticSerialize(writeValue, field.getCanOpenDataType(), writeValue.getLength() / 8, true);
+            WriteBuffer buffer = DataItemIO.staticSerialize(writeValue, field.getCanOpenDataType(), writeValue.getLength(), true);
             if (buffer != null) {
-                context.sendToWire(new SocketCANFrame(field.getNodeId(), buffer.getData()));
+                int cob = field.getService().getMin() + field.getNodeId();
+                context.sendToWire(new SocketCANFrame(cob, buffer.getData()));
                 response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.OK)));
             } else {
                 response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.INVALID_DATA)));
@@ -252,16 +259,27 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     private void readInternally(InternalPlcReadRequest readRequest, CANOpenSDOField field, CompletableFuture<PlcReadResponse> response) {
-        CANOpenConversation<CANFrame> canopen = new CANOpenConversation<>(field.getNodeId(), conversation);
-
-        SDOUploadConversation<CANFrame> upload = canopen.sdo().upload(new IndexAddress(field.getIndex(), field.getSubIndex()), field.getCanOpenDataType());
         try {
-            upload.execute((value, error) -> {
+            final RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
+            CANOpenConversation<CANFrame> canopen = new CANOpenConversation<>(transaction, field.getNodeId(), conversation);
+            System.out.println("----> Submit read " + field.getIndex() + "/" + field.getSubIndex() + " from " + field.getNodeId() + " " + transaction);
+            SDOUploadConversation<CANFrame> upload = canopen.sdo().upload(new IndexAddress(field.getIndex(), field.getSubIndex()), field.getCanOpenDataType());
+            CompletableFuture<PlcValue> callback = new CompletableFuture<>();
+            callback.whenComplete((value, error) -> {
+                System.out.println("<---- Received reply " + field.getIndex() + "/" + field.getSubIndex() + " from " + field.getNodeId() + " " + value + "/" + error + " " + transaction);
+                if (error != null) {
+                    response.completeExceptionally(error);
+                    transaction.endRequest();
+                    return;
+                }
+
                 String fieldName = readRequest.getFieldNames().iterator().next();
                 Map<String, ResponseItem<PlcValue>> fields = new HashMap<>();
                 fields.put(fieldName, new ResponseItem<>(PlcResponseCode.OK, value));
                 response.complete(new DefaultPlcReadResponse(readRequest, fields));
+                transaction.endRequest();
             });
+            upload.execute(callback);
         } catch (Exception e) {
             response.completeExceptionally(e);
         }
@@ -275,13 +293,23 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
         CANOpenDriverContext.CALLBACK.receive(msg);
 
         if (service != null) {
-            logger.info("Decoded CANOpen {} from {}, message {}", service, Math.abs(service.getMin() - msg.getIdentifier()), payload);
+            int nodeId = Math.abs(service.getMin() - msg.getIdentifier());
 
             if (service.getPdo() && payload instanceof CANOpenPDOPayload) {
-                logger.info("Broadcasting PDO to subscribers");
-                publishEvent(msg.getIdentifier(), (CANOpenPDOPayload) payload);
+                publishEvent(service, nodeId, (CANOpenPDOPayload) payload);
+            } else {
+                String hex = "";
+                if (logger.isInfoEnabled()) {
+                    try {
+                        final WriteBuffer buffer = new WriteBuffer(payload.getLengthInBytes(), true);
+                        CANOpenPayloadIO.staticSerialize(buffer, payload);
+                        hex = Hex.encodeHexString(buffer.getData());
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                }
+                logger.info("Decoded CANOpen {} from {}, message {}, {}", service, nodeId, payload, hex);
             }
-
         } else {
             logger.info("CAN message {}, {}", msg.getIdentifier(), msg);
         }
@@ -296,7 +324,8 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 //        }
     }
 
-    private void publishEvent(int nodeId, CANOpenPDOPayload payload) {
+    private void publishEvent(CANOpenService service, int nodeId, CANOpenPDOPayload payload) {
+        CANOpenSubscriptionHandle dispatchedHandle = null;
         for (Map.Entry<DefaultPlcConsumerRegistration, Consumer<PlcSubscriptionEvent>> entry : consumers.entrySet()) {
             DefaultPlcConsumerRegistration registration = entry.getKey();
             Consumer<PlcSubscriptionEvent> consumer = entry.getValue();
@@ -305,7 +334,10 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
                 if (handler instanceof CANOpenSubscriptionHandle) {
                     CANOpenSubscriptionHandle handle = (CANOpenSubscriptionHandle) handler;
 
-                    if (handle.matches(nodeId)) {
+                    if (handle.matches(service, nodeId)) {
+                        logger.trace("Dispatching notification {} for node {} to {}", service, nodeId, handle);
+                        dispatchedHandle = handle;
+
                         CANOpenPDOField field = handle.getField();
                         byte[] data = payload.getPdo().getData();
                         try {
@@ -329,9 +361,14 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
                             );
                             consumer.accept(event);
                         }
+                    } else {
                     }
                 }
             }
+        }
+
+        if (dispatchedHandle == null) {
+            logger.trace("Could not find subscription matching {} and node {}", service, nodeId);
         }
     }
 
@@ -362,8 +399,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     private int cobId(int nodeId, CANOpenService service) {
         // form 32 bit socketcan identifier
-        return (nodeId << 24) & 0xff000000 |
-            (service.getValue() << 16 ) & 0x00ff0000;
+        return service.getMin() + nodeId;
     }
 
     private CANOpenService serviceId(int cobId) {

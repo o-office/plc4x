@@ -20,17 +20,21 @@ package org.apache.plc4x.java.can.field;
 
 import org.apache.plc4x.java.api.exceptions.PlcInvalidFieldException;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenDataType;
+import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CANOpenPDOField extends CANOpenField {
 
-    public static final Pattern ADDRESS_PATTERN = Pattern.compile("PDO:" + CANOpenField.NODE_PATTERN + ":(?<canDataType>\\w+)(\\[(?<numberOfElements>\\d)])?");
+    public static final Pattern ADDRESS_PATTERN = Pattern.compile("(?<pdo>(?:RECEIVE|TRANSMIT)_PDO_[1-4]):" + CANOpenField.NODE_PATTERN + ":(?<canDataType>\\w+)(\\[(?<numberOfElements>\\d)])?");
+    private final CANOpenService service;
     private final CANOpenDataType canOpenDataType;
 
-    public CANOpenPDOField(int node, CANOpenDataType canOpenDataType) {
+    public CANOpenPDOField(int node, CANOpenService service, CANOpenDataType canOpenDataType) {
         super(node);
+        this.service = service;
         this.canOpenDataType = canOpenDataType;
     }
 
@@ -55,10 +59,19 @@ public class CANOpenPDOField extends CANOpenField {
         Matcher matcher = getMatcher(addressString);
         int nodeId = Integer.parseInt(matcher.group("nodeId"));
 
+        String pdo = matcher.group("pdo");
+        CANOpenService service = CANOpenService.valueOf(pdo);
+        if (service == null) {
+            throw new IllegalArgumentException("Invalid PDO detected " + pdo);
+        }
+
         String canDataTypeString = matcher.group("canDataType");
         CANOpenDataType canOpenDataType = CANOpenDataType.valueOf(canDataTypeString);
 
-        return new CANOpenPDOField(nodeId, canOpenDataType);
+        return new CANOpenPDOField(nodeId, service, canOpenDataType);
     }
 
+    public CANOpenService getService() {
+        return service;
+    }
 }

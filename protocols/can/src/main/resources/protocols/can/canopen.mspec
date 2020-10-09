@@ -354,3 +354,10 @@
         ]
     ]
 ]
+
+// utility type quickly write data for mapped/manufacturer PDOs
+[type 'CANOpenMPDO'
+    [simple uint 8 'node']
+    [simple IndexAddress 'address']
+    [array int 8 'data' COUNT '4']
+]
