@@ -1,20 +1,18 @@
 package org.apache.plc4x.java.can.api.conversation.canopen;
 
-import org.apache.plc4x.java.can.api.CANFrame;
-
-import java.util.function.BiConsumer;
-
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
+import org.apache.plc4x.java.can.canopen.CANOpenFrameBuilder;
 import org.apache.plc4x.java.spi.ConversationContext.SendRequestContext;
-import org.apache.plc4x.java.spi.transaction.RequestTransactionManager.RequestTransaction;
 
-public interface CANConversation<W extends CANFrame> {
+import java.util.function.Consumer;
+
+public interface CANConversation<W extends CANOpenFrame> {
 
     int getNodeId();
 
-    CANFrameBuilder<W> frameBuilder();
+    CANOpenFrameBuilder createBuilder();
 
-    void send(RequestTransaction transaction, W frame, BiConsumer<RequestTransaction, SendRequestContext<W>> callback);
-
+    void send(W frame, Consumer<SendRequestContext<W>> callback);
 
 }
 

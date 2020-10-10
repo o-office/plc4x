@@ -19,13 +19,12 @@
 package org.apache.plc4x.java.can;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
+import org.apache.plc4x.java.can.canopen.socketcan.io.CANOpenSocketCANFrameIO;
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
 import org.apache.plc4x.java.can.context.CANOpenDriverContext;
-import org.apache.plc4x.java.can.field.CANFieldHandler;
 import org.apache.plc4x.java.can.field.CANOpenFieldHandler;
 import org.apache.plc4x.java.can.protocol.CANOpenProtocolLogic;
-import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
-import org.apache.plc4x.java.socketcan.readwrite.io.SocketCANFrameIO;
 import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
 import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
@@ -35,7 +34,7 @@ import java.util.function.ToIntFunction;
 
 /**
  */
-public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
+public class CANOpenPlcDriver extends GeneratedDriverBase<CANOpenFrame> {
 
     @Override
     public String getProtocolCode() {
@@ -44,7 +43,7 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
 
     @Override
     public String getProtocolName() {
-        return "CANopen";
+        return "CAN Open";
     }
 
     @Override
@@ -78,8 +77,8 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<SocketCANFrame> {
     }
 
     @Override
-    protected ProtocolStackConfigurer<SocketCANFrame> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(SocketCANFrame.class, SocketCANFrameIO.class)
+    protected ProtocolStackConfigurer<CANOpenFrame> getStackConfigurer() {
+        return SingleProtocolStackConfigurer.builder(CANOpenFrame.class, CANOpenSocketCANFrameIO.class)
             .withProtocol(CANOpenProtocolLogic.class)
             .withDriverContext(CANOpenDriverContext.class)
             .withPacketSizeEstimator(CANEstimator.class)

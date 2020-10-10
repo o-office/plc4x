@@ -19,6 +19,7 @@ under the License.
 package org.apache.plc4x.java.can.protocol;
 
 import org.apache.commons.codec.binary.Hex;
+import org.apache.plc4x.java.api.exceptions.PlcException;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.messages.*;
 import org.apache.plc4x.java.api.model.PlcConsumerRegistration;
@@ -29,22 +30,21 @@ import org.apache.plc4x.java.api.types.PlcSubscriptionType;
 import org.apache.plc4x.java.api.value.PlcList;
 import org.apache.plc4x.java.api.value.PlcNull;
 import org.apache.plc4x.java.api.value.PlcValue;
-import org.apache.plc4x.java.can.api.CANFrame;
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
 import org.apache.plc4x.java.can.api.conversation.canopen.CANConversation;
 import org.apache.plc4x.java.can.api.conversation.canopen.CANOpenConversation;
 import org.apache.plc4x.java.can.api.conversation.canopen.SDODownloadConversation;
 import org.apache.plc4x.java.can.api.conversation.canopen.SDOUploadConversation;
+import org.apache.plc4x.java.can.canopen.CANOpenFrameBuilder;
+import org.apache.plc4x.java.can.canopen.CANOpenFrameBuilderFactory;
+import org.apache.plc4x.java.can.canopen.socketcan.CANOpenSocketCANFrameBuilder;
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
 import org.apache.plc4x.java.can.context.CANOpenDriverContext;
 import org.apache.plc4x.java.can.field.CANOpenField;
 import org.apache.plc4x.java.can.field.CANOpenPDOField;
 import org.apache.plc4x.java.can.field.CANOpenSDOField;
 import org.apache.plc4x.java.can.socketcan.SocketCANConversation;
-import org.apache.plc4x.java.canopen.readwrite.CANOpenHeartbeatPayload;
-import org.apache.plc4x.java.canopen.readwrite.CANOpenPDOPayload;
-import org.apache.plc4x.java.canopen.readwrite.CANOpenPayload;
-import org.apache.plc4x.java.canopen.readwrite.IndexAddress;
-import org.apache.plc4x.java.canopen.readwrite.io.CANOpenHeartbeatPayloadIO;
+import org.apache.plc4x.java.canopen.readwrite.*;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.DataItemIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
@@ -66,8 +66,6 @@ import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -82,16 +80,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> implements HasConfiguration<CANConfiguration>, PlcSubscriber {
+public class CANOpenProtocolLogic extends Plc4xProtocolBase<CANOpenFrame> implements HasConfiguration<CANConfiguration>, PlcSubscriber {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10L);
     private Logger logger = LoggerFactory.getLogger(CANOpenProtocolLogic.class);
+
+    private CANOpenFrameBuilderFactory factory = CANOpenSocketCANFrameBuilder::new;
 
     private CANConfiguration configuration;
     private RequestTransactionManager tm;
     private Timer heartbeat;
     private CANOpenDriverContext canContext;
-    private CANConversation<CANFrame> conversation;
+    private CANConversation<CANOpenFrame> conversation;
 
     private Map<DefaultPlcConsumerRegistration, Consumer<PlcSubscriptionEvent>> consumers = new ConcurrentHashMap<>();
 
@@ -114,7 +114,7 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     @Override
-    public void onConnect(ConversationContext<SocketCANFrame> context) {
+    public void onConnect(ConversationContext<CANOpenFrame> context) {
         try {
             if (configuration.isHeartbeat()) {
                 context.sendToWire(createFrame(new CANOpenHeartbeatPayload(NMTState.BOOTED_UP)));
@@ -138,15 +138,13 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     @Override
-    public void setContext(ConversationContext<SocketCANFrame> context) {
+    public void setContext(ConversationContext<CANOpenFrame> context) {
         super.setContext(context);
-        this.conversation = new SocketCANConversation(configuration.getNodeId(), context);
+        this.conversation = new SocketCANConversation(configuration.getNodeId(), context, factory);
     }
 
-    private SocketCANFrame createFrame(CANOpenHeartbeatPayload state) throws ParseException {
-        WriteBuffer buffer = new WriteBuffer(state.getLengthInBytes(), true);
-        CANOpenHeartbeatPayloadIO.staticSerialize(buffer, state);
-        return new SocketCANFrame(cobId(configuration.getNodeId(), CANOpenService.HEARTBEAT), buffer.getData());
+    private CANOpenFrame createFrame(CANOpenHeartbeatPayload state) throws ParseException {
+        return factory.createBuilder().withNodeId(configuration.getNodeId()).withService(CANOpenService.HEARTBEAT).withPayload(state).build();
     }
 
     public CompletableFuture<PlcWriteResponse> write(PlcWriteRequest writeRequest) {
@@ -177,20 +175,24 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
 
     private void writeInternally(InternalPlcWriteRequest writeRequest, CANOpenSDOField field, CompletableFuture<PlcWriteResponse> response) {
         final RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-        CANOpenConversation<CANFrame> canopen = new CANOpenConversation<>(transaction, field.getNodeId(), conversation);
+
+        String fieldName = writeRequest.getFieldNames().iterator().next();
+
+        CompletableFuture<PlcResponseCode> callback = new CompletableFuture<>();
+        callback.whenComplete((code, error) -> {
+            if (error != null) {
+                response.completeExceptionally(error);
+                transaction.endRequest();
+                return;
+            }
+            response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, code)));
+            transaction.endRequest();
+        });
 
         PlcValue writeValue = writeRequest.getPlcValues().get(0);
-
-        SDODownloadConversation<CANFrame> download = canopen.sdo().download(new IndexAddress(field.getIndex(), field.getSubIndex()), writeValue, field.getCanOpenDataType());
-        try {
-            download.execute((value, error) -> {
-                String fieldName = writeRequest.getFieldNames().iterator().next();
-                response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.OK)));
-                transaction.endRequest();
-            });
-        } catch (Exception e) {
-            response.completeExceptionally(e);
-        }
+        CANOpenConversation canopen = new CANOpenConversation(field.getNodeId(), conversation);
+        SDODownloadConversation download = canopen.sdo().download(new IndexAddress(field.getIndex(), field.getSubIndex()), writeValue, field.getCanOpenDataType());
+        transaction.submit(() -> download.execute(callback));
     }
 
     private void writeInternally(InternalPlcWriteRequest writeRequest, CANOpenPDOField field, CompletableFuture<PlcWriteResponse> response) {
@@ -200,8 +202,13 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
             String fieldName = writeRequest.getFieldNames().iterator().next();
             WriteBuffer buffer = DataItemIO.staticSerialize(writeValue, field.getCanOpenDataType(), writeValue.getLength(), true);
             if (buffer != null) {
-                int cob = field.getService().getMin() + field.getNodeId();
-                context.sendToWire(new SocketCANFrame(cob, buffer.getData()));
+                final CANOpenPDOPayload payload = new CANOpenPDOPayload(new CANOpenPDO(buffer.getData()));
+                context.sendToWire(factory.createBuilder()
+                    .withNodeId(field.getNodeId())
+                    .withService(field.getService())
+                    .withPayload(payload)
+                    .build()
+                );
                 response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.OK)));
             } else {
                 response.complete(new DefaultPlcWriteResponse(writeRequest, Collections.singletonMap(fieldName, PlcResponseCode.INVALID_DATA)));
@@ -237,8 +244,6 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     public CompletableFuture<PlcSubscriptionResponse> subscribe(PlcSubscriptionRequest request) {
         InternalPlcSubscriptionRequest rq = (InternalPlcSubscriptionRequest) request;
 
-        List<SubscriptionPlcField> fields = rq.getSubscriptionFields();
-
         Map<String, ResponseItem<PlcSubscriptionHandle>> answers = new LinkedHashMap<>();
         DefaultPlcSubscriptionResponse response = new DefaultPlcSubscriptionResponse(rq, answers);
 
@@ -259,42 +264,35 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     private void readInternally(InternalPlcReadRequest readRequest, CANOpenSDOField field, CompletableFuture<PlcReadResponse> response) {
-        try {
-            final RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-            CANOpenConversation<CANFrame> canopen = new CANOpenConversation<>(transaction, field.getNodeId(), conversation);
-            System.out.println("----> Submit read " + field.getIndex() + "/" + field.getSubIndex() + " from " + field.getNodeId() + " " + transaction);
-            SDOUploadConversation<CANFrame> upload = canopen.sdo().upload(new IndexAddress(field.getIndex(), field.getSubIndex()), field.getCanOpenDataType());
-            CompletableFuture<PlcValue> callback = new CompletableFuture<>();
-            callback.whenComplete((value, error) -> {
-                System.out.println("<---- Received reply " + field.getIndex() + "/" + field.getSubIndex() + " from " + field.getNodeId() + " " + value + "/" + error + " " + transaction);
-                if (error != null) {
-                    response.completeExceptionally(error);
-                    transaction.endRequest();
-                    return;
-                }
+        String fieldName = readRequest.getFieldNames().iterator().next();
 
-                String fieldName = readRequest.getFieldNames().iterator().next();
-                Map<String, ResponseItem<PlcValue>> fields = new HashMap<>();
-                fields.put(fieldName, new ResponseItem<>(PlcResponseCode.OK, value));
-                response.complete(new DefaultPlcReadResponse(readRequest, fields));
+        final RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
+        CompletableFuture<PlcValue> callback = new CompletableFuture<>();
+        callback.whenComplete((value, error) -> {
+            if (error != null) {
+                response.completeExceptionally(error);
                 transaction.endRequest();
-            });
-            upload.execute(callback);
-        } catch (Exception e) {
-            response.completeExceptionally(e);
-        }
+                return;
+            }
+
+            Map<String, ResponseItem<PlcValue>> fields = new HashMap<>();
+            fields.put(fieldName, new ResponseItem<>(PlcResponseCode.OK, value));
+            response.complete(new DefaultPlcReadResponse(readRequest, fields));
+            transaction.endRequest();
+        });
+
+        CANOpenConversation canopen = new CANOpenConversation(field.getNodeId(), conversation);
+        SDOUploadConversation upload = canopen.sdo().upload(new IndexAddress(field.getIndex(), field.getSubIndex()), field.getCanOpenDataType());
+        transaction.submit(() -> upload.execute(callback));
     }
 
     @Override
-    protected void decode(ConversationContext<SocketCANFrame> context, SocketCANFrame msg) throws Exception {
-        CANOpenService service = serviceId(msg.getIdentifier());
-        CANOpenPayload payload = CANOpenPayloadIO.staticParse(new ReadBuffer(msg.getData()), service);
-
-        CANOpenDriverContext.CALLBACK.receive(msg);
+    protected void decode(ConversationContext<CANOpenFrame> context, CANOpenFrame msg) throws Exception {
+        int nodeId = msg.getNodeId();
+        CANOpenService service = msg.getService();
+        CANOpenPayload payload = msg.getPayload();
 
         if (service != null) {
-            int nodeId = Math.abs(service.getMin() - msg.getIdentifier());
-
             if (service.getPdo() && payload instanceof CANOpenPDOPayload) {
                 publishEvent(service, nodeId, (CANOpenPDOPayload) payload);
             } else {
@@ -310,8 +308,6 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
                 }
                 logger.info("Decoded CANOpen {} from {}, message {}, {}", service, nodeId, payload, hex);
             }
-        } else {
-            logger.info("CAN message {}, {}", msg.getIdentifier(), msg);
         }
 
 //        int identifier = msg.getIdentifier();
@@ -385,33 +381,16 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<SocketCANFrame> impl
     }
 
     @Override
-    public void close(ConversationContext<SocketCANFrame> context) {
+    public void close(ConversationContext<CANOpenFrame> context) {
 
     }
 
     @Override
-    public void onDisconnect(ConversationContext<SocketCANFrame> context) {
+    public void onDisconnect(ConversationContext<CANOpenFrame> context) {
         if (this.heartbeat != null) {
             this.heartbeat.cancel();
             this.heartbeat = null;
         }
     }
 
-    private int cobId(int nodeId, CANOpenService service) {
-        // form 32 bit socketcan identifier
-        return service.getMin() + nodeId;
-    }
-
-    private CANOpenService serviceId(int cobId) {
-        // form 32 bit socketcan identifier
-        CANOpenService service = CANOpenService.valueOf((byte) (cobId >> 7));
-        if (service == null) {
-            for (CANOpenService val : CANOpenService.values()) {
-                if (val.getMin() > cobId && val.getMax() < cobId) {
-                    return val;
-                }
-            }
-        }
-        return service;
-    }
 }

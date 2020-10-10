@@ -1,6 +1,7 @@
 package org.apache.plc4x.java.can.api.conversation.canopen;
 
 import org.apache.plc4x.java.api.value.PlcValue;
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
 import org.apache.plc4x.java.canopen.readwrite.io.DataItemIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenDataType;
 import org.apache.plc4x.java.spi.generation.ParseException;

@@ -4,26 +4,22 @@ import org.apache.plc4x.java.api.exceptions.PlcException;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
 import org.apache.plc4x.java.api.value.PlcValue;
-import org.apache.plc4x.java.can.api.CANFrame;
-import org.apache.plc4x.java.can.api.segmentation.accumulator.ByteStorage;
 import org.apache.plc4x.java.canopen.readwrite.*;
 import org.apache.plc4x.java.canopen.readwrite.io.DataItemIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenDataType;
 import org.apache.plc4x.java.canopen.readwrite.types.SDOResponseCommand;
 import org.apache.plc4x.java.spi.generation.ParseException;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
-public class SDODownloadConversation<W extends CANFrame> {
+public class SDODownloadConversation extends CANOpenConversationBase {
 
-    private final SDOConversation<W> delegate;
+    private final SDOConversation delegate;
     private final IndexAddress indexAddress;
     private final byte[] data;
 
-    public SDODownloadConversation(SDOConversation<W> delegate, IndexAddress indexAddress, PlcValue value, CANOpenDataType type) {
+    public SDODownloadConversation(SDOConversation delegate, IndexAddress indexAddress, PlcValue value, CANOpenDataType type) {
         this.delegate = delegate;
         this.indexAddress = indexAddress;
 
@@ -34,12 +30,12 @@ public class SDODownloadConversation<W extends CANFrame> {
         }
     }
 
-    public void execute(BiConsumer<PlcResponseCode, Throwable> receiver) throws PlcException {
+    public void execute(CompletableFuture<PlcResponseCode> receiver) {
         if (data.length > 4) {
             // segmented
 
             SDOInitiateSegmentedUploadResponse size = new SDOInitiateSegmentedUploadResponse(data.length);
-            delegate.send(new SDOInitiateDownloadRequest(false, true, indexAddress, size), (tx, ctx) -> {
+            delegate.send(new SDOInitiateDownloadRequest(false, true, indexAddress, size), (ctx) -> {
                 ctx.unwrap(CANOpenSDOResponse::getResponse)
                     .check(p -> p.getCommand() == SDOResponseCommand.INITIATE_DOWNLOAD)
                     .only(SDOInitiateDownloadResponse.class)
@@ -59,11 +55,12 @@ public class SDODownloadConversation<W extends CANFrame> {
             new SDOInitiateExpeditedUploadResponse(data)
         );
 
-        delegate.send(rq, (tx, ctx) ->
+        delegate.send(rq, (ctx) ->
             ctx.onError((response, error) -> {
                 System.out.println("Unexpected frame " + response + " " + error);
             })
             .unwrap(CANOpenSDOResponse::getResponse)
+            .only(SDOInitiateDownloadResponse.class)
             .check(r -> r.getCommand() == SDOResponseCommand.INITIATE_DOWNLOAD)
             .handle(r -> {
                 System.out.println(r);
@@ -71,23 +68,25 @@ public class SDODownloadConversation<W extends CANFrame> {
         );
     }
 
-    private void put(byte[] data, BiConsumer<PlcResponseCode, Throwable> receiver, boolean toggle, int offset) {
+    private void put(byte[] data, CompletableFuture<PlcResponseCode> receiver, boolean toggle, int offset) {
         int remaining = data.length - offset;
         byte[] segment = new byte[Math.min(remaining, 7)];
         System.arraycopy(data, offset, segment, 0, segment.length);
 
-        delegate.send(new SDOSegmentDownloadRequest(toggle, remaining <= 7, segment), (tx, ctx) -> {
+        delegate.send(new SDOSegmentDownloadRequest(toggle, remaining <= 7, segment), (ctx) -> {
             ctx.unwrap(CANOpenSDOResponse::getResponse)
                 .only(SDOSegmentDownloadResponse.class)
                 .onError((response, error) -> {
-                    System.out.println("Unexpected frame " + response + " " + error);
-                    receiver.accept(null, error);
+                    if (error != null) {
+                        receiver.completeExceptionally(error);
+                    } else {
+                        receiver.completeExceptionally(new PlcException("Transaction terminated"));
+                    }
                 })
-                .check(r -> r.getToggle() == toggle)
+                .check(response -> response.getToggle() == toggle)
                 .handle(reply -> {
                     if (offset + segment.length == data.length) {
-                        // validate offset
-                        receiver.accept(PlcResponseCode.OK, null);
+                        receiver.complete(PlcResponseCode.OK);
                     } else {
                         put(data, receiver, !toggle, offset + segment.length);
                     }
