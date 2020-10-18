@@ -5,11 +5,11 @@ import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
 import org.apache.plc4x.java.spi.messages.PlcSubscriber;
 import org.apache.plc4x.java.spi.model.DefaultPlcSubscriptionHandle;
 
-public class CANOpenSubscriptionHandle extends DefaultPlcSubscriptionHandle {
+public class CANOpenPDOSubscriptionHandle extends DefaultPlcSubscriptionHandle {
     private final String name;
     private final CANOpenPDOField field;
 
-    public CANOpenSubscriptionHandle(PlcSubscriber subscriber, String name, CANOpenPDOField field) {
+    public CANOpenPDOSubscriptionHandle(PlcSubscriber subscriber, String name, CANOpenPDOField field) {
         super(subscriber);
         this.name = name;
         this.field = field;
@@ -31,7 +31,7 @@ public class CANOpenSubscriptionHandle extends DefaultPlcSubscriptionHandle {
     }
 
     public String toString() {
-        return "CANOpenSubscriptionHandle [service=" + field.getService() + ", node=" + intAndHex(field.getNodeId()) + ", cob=" + intAndHex(field.getService().getMin() + field.getNodeId()) + "]";
+        return "CANOpenPDOSubscriptionHandle [service=" + field.getService() + ", node=" + intAndHex(field.getNodeId()) + ", cob=" + intAndHex(field.getService().getMin() + field.getNodeId()) + "]";
     }
 
     private static String intAndHex(int val) {
