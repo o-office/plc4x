@@ -46,6 +46,10 @@ public abstract class CANOpenField implements PlcField {
             return CANOpenSDOField.of(addressString);
         } else if (CANOpenPDOField.matches(addressString)) {
             return CANOpenPDOField.of(addressString);
+        } else if (CANOpenNMTField.matches(addressString)) {
+            return CANOpenNMTField.of(addressString);
+        } else if (CANOpenHeartbeatField.matches(addressString)) {
+            return CANOpenHeartbeatField.of(addressString);
         }
 
         throw new PlcInvalidFieldException("Unable to parse address: " + addressString);

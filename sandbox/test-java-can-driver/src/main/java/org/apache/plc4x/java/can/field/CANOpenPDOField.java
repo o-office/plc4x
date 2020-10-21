@@ -26,7 +26,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class CANOpenPDOField extends CANOpenField {
+public class CANOpenPDOField extends CANOpenField implements CANOpenSubscriptionField {
 
     public static final Pattern ADDRESS_PATTERN = Pattern.compile("(?<pdo>(?:RECEIVE|TRANSMIT)_PDO_[1-4]):" + CANOpenField.NODE_PATTERN + ":(?<canDataType>\\w+)(\\[(?<numberOfElements>\\d)])?");
     private final CANOpenService service;
@@ -74,4 +74,10 @@ public class CANOpenPDOField extends CANOpenField {
     public CANOpenService getService() {
         return service;
     }
+
+    @Override
+    public boolean isWildcard() {
+        return false;
+    }
+
 }

@@ -56,4 +56,22 @@ public class ByteStorage<T> implements Storage<T, byte[]> {
         }
     }
 
+    public static class SDODownloadStorage extends ByteStorage<SDORequest> {
+        public SDODownloadStorage() {
+            super((sdoRequest -> {
+                if (sdoRequest instanceof SDOSegmentDownloadRequest) {
+                    return ((SDOSegmentDownloadRequest) sdoRequest).getData();
+                }
+                if (sdoRequest instanceof  SDOInitiateDownloadRequest) {
+                    SDOInitiateDownloadRequest initiate = (SDOInitiateDownloadRequest) sdoRequest;
+
+                    if (initiate.getPayload() instanceof SDOInitiateExpeditedUploadResponse) {
+                        return ((SDOInitiateExpeditedUploadResponse) initiate.getPayload()).getData();
+                    }
+                }
+                return new byte[0];
+            }));
+        }
+    }
+
 }

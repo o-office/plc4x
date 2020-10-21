@@ -38,16 +38,14 @@ import org.apache.plc4x.java.can.canopen.CANOpenFrameBuilderFactory;
 import org.apache.plc4x.java.can.canopen.socketcan.CANOpenSocketCANFrameBuilder;
 import org.apache.plc4x.java.can.configuration.CANConfiguration;
 import org.apache.plc4x.java.can.context.CANOpenDriverContext;
-import org.apache.plc4x.java.can.field.CANOpenField;
-import org.apache.plc4x.java.can.field.CANOpenNMTField;
-import org.apache.plc4x.java.can.field.CANOpenPDOField;
-import org.apache.plc4x.java.can.field.CANOpenSDOField;
+import org.apache.plc4x.java.can.field.*;
 import org.apache.plc4x.java.can.socketcan.SocketCANConversation;
 import org.apache.plc4x.java.canopen.readwrite.*;
 import org.apache.plc4x.java.canopen.readwrite.io.CANOpenPayloadIO;
 import org.apache.plc4x.java.canopen.readwrite.io.DataItemIO;
 import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
 import org.apache.plc4x.java.canopen.readwrite.types.NMTState;
+import org.apache.plc4x.java.canopen.readwrite.types.NMTStateRequest;
 import org.apache.plc4x.java.spi.ConversationContext;
 import org.apache.plc4x.java.spi.Plc4xProtocolBase;
 import org.apache.plc4x.java.spi.configuration.HasConfiguration;
@@ -251,11 +249,15 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<CANOpenFrame> implem
                 answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.UNSUPPORTED, null));
             } else if ((subscription.getPlcField() instanceof CANOpenPDOField)) {
                 answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.OK,
-                    new CANOpenPDOSubscriptionHandle(this, entry.getKey(), (CANOpenPDOField) subscription.getPlcField())
+                    new CANOpenSubscriptionHandle(this, entry.getKey(), (CANOpenPDOField) subscription.getPlcField())
                 ));
             } else if ((subscription.getPlcField() instanceof CANOpenNMTField)) {
                 answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.OK,
-                    new CANOpenNMTSubscriptionHandle(this, entry.getKey(), (CANOpenNMTField) subscription.getPlcField())
+                    new CANOpenSubscriptionHandle(this, entry.getKey(), (CANOpenNMTField) subscription.getPlcField())
+                ));
+            } else if ((subscription.getPlcField() instanceof CANOpenHeartbeatField)) {
+                answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.OK,
+                    new CANOpenSubscriptionHandle(this, entry.getKey(), (CANOpenHeartbeatField) subscription.getPlcField())
                 ));
             } else {
                 answers.put(entry.getKey(), new ResponseItem<>(PlcResponseCode.INVALID_ADDRESS, null));
@@ -294,11 +296,11 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<CANOpenFrame> implem
         CANOpenService service = msg.getService();
         CANOpenPayload payload = msg.getPayload();
 
-        if (service != null) {
+        if (service != null && nodeId != this.configuration.getNodeId()) {
             if (service.getPdo() && payload instanceof CANOpenPDOPayload) {
-                publishEvent(service, nodeId, (CANOpenPDOPayload) payload);
-            } else if (service == CANOpenService.NMT && payload instanceof CANOpenNetworkPayload) {
-                publishEvent(service, nodeId, (CANOpenNetworkPayload) payload);
+                publishEvent(service, nodeId, payload);
+            } else if (service == CANOpenService.HEARTBEAT && payload instanceof CANOpenHeartbeatPayload) {
+                publishEvent(service, nodeId, payload);
             } else {
                 String hex = "";
                 if (logger.isInfoEnabled()) {
@@ -331,14 +333,14 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<CANOpenFrame> implem
             Consumer<PlcSubscriptionEvent> consumer = entry.getValue();
 
             for (InternalPlcSubscriptionHandle handler : registration.getAssociatedHandles()) {
-                if (handler instanceof CANOpenPDOSubscriptionHandle && payload instanceof CANOpenPDOPayload) {
-                    CANOpenPDOSubscriptionHandle handle = (CANOpenPDOSubscriptionHandle) handler;
+                CANOpenSubscriptionHandle handle = (CANOpenSubscriptionHandle) handler;
+                if (payload instanceof CANOpenPDOPayload) {
 
                     if (handle.matches(service, nodeId)) {
                         logger.trace("Dispatching notification {} for node {} to {}", service, nodeId, handle);
                         dispatchedHandle = handle;
 
-                        CANOpenPDOField field = handle.getField();
+                        CANOpenPDOField field = (CANOpenPDOField) handle.getField();
                         byte[] data = ((CANOpenPDOPayload) payload).getPdo().getData();
                         try {
                             PlcValue value = DataItemIO.staticParse(new ReadBuffer(data, true), field.getCanOpenDataType(), data.length);
@@ -362,14 +364,31 @@ public class CANOpenProtocolLogic extends Plc4xProtocolBase<CANOpenFrame> implem
                             consumer.accept(event);
                         }
                     }
-                } else if (handler instanceof CANOpenPDOSubscriptionHandle && payload instanceof CANOpenHeartbeatPayload) {
-                    CANOpenNMTSubscriptionHandle handle = (CANOpenNMTSubscriptionHandle) handler;
-
+                } else if (payload instanceof CANOpenHeartbeatPayload) {
                     if (handle.matches(service, nodeId)) {
                         logger.trace("Dispatching notification {} for node {} to {}", service, nodeId, handle);
                         dispatchedHandle = handle;
 
                         final NMTState state = ((CANOpenHeartbeatPayload) payload).getState();
+                        Map<String, PlcValue> fields = new HashMap<>();
+                        fields.put("state", new PlcUSINT(state.getValue()));
+                        fields.put("node", new PlcUSINT(nodeId));
+                        PlcStruct struct = new PlcStruct(fields);
+                        DefaultPlcSubscriptionEvent event = new DefaultPlcSubscriptionEvent(
+                            Instant.now(),
+                            Collections.singletonMap(
+                                handle.getName(),
+                                new ResponseItem<>(PlcResponseCode.OK, struct)
+                            )
+                        );
+                        consumer.accept(event);
+                    }
+                } else if (payload instanceof CANOpenNetworkPayload) {
+                    if (handle.matches(service, nodeId)) {
+                        logger.trace("Dispatching notification {} for node {} to {}", service, nodeId, handle);
+                        dispatchedHandle = handle;
+
+                        final NMTStateRequest state = ((CANOpenNetworkPayload) payload).getRequest();
                         Map<String, PlcValue> fields = new HashMap<>();
                         fields.put("state", new PlcUSINT(state.getValue()));
                         fields.put("node", new PlcUSINT(nodeId));

@@ -35,12 +35,17 @@ class CANOpenNMTFieldTest {
 
     @Test
     public void testWildcardSyntax() {
-        final CANOpenNMTField canField = CANOpenNMTField.of("NMT:0");
+        CANOpenNMTField canField = CANOpenNMTField.of("NMT:0");
+
+        assertEquals(0, canField.getNodeId());
+        assertTrue(canField.isWildcard());
+
+        // an simplified syntax
+        canField = CANOpenNMTField.of("NMT");
 
         assertEquals(0, canField.getNodeId());
         assertTrue(canField.isWildcard());
     }
-
 
     @Test
     public void testInvalidSyntax() {

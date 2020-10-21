@@ -24,17 +24,17 @@ import org.apache.plc4x.java.canopen.readwrite.types.CANOpenService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class CANOpenNMTField extends CANOpenField implements CANOpenSubscriptionField {
+public class CANOpenHeartbeatField extends CANOpenField implements CANOpenSubscriptionField {
 
-    public static final Pattern ADDRESS_PATTERN = Pattern.compile("NMT|NMT:" + CANOpenField.NODE_PATTERN);
+    public static final Pattern ADDRESS_PATTERN = Pattern.compile("HEARTBEAT|HEARTBEAT:" + CANOpenField.NODE_PATTERN);
 
-    public CANOpenNMTField(int node) {
+    public CANOpenHeartbeatField(int node) {
         super(node);
     }
 
     @Override
     public CANOpenService getService() {
-        return CANOpenService.NMT;
+        return CANOpenService.HEARTBEAT;
     }
 
     public boolean isWildcard() {
@@ -54,11 +54,11 @@ public class CANOpenNMTField extends CANOpenField implements CANOpenSubscription
         throw new PlcInvalidFieldException(addressString, ADDRESS_PATTERN);
     }
 
-    public static CANOpenNMTField of(String addressString) {
+    public static CANOpenHeartbeatField of(String addressString) {
         Matcher matcher = getMatcher(addressString);
         int nodeId = matcher.group("nodeId") == null ? 0 : Integer.parseInt(matcher.group("nodeId"));
 
-        return new CANOpenNMTField(nodeId);
+        return new CANOpenHeartbeatField(nodeId);
     }
 
 }
