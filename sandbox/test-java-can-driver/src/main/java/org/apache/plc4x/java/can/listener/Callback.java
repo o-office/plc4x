@@ -1,8 +1,8 @@
 package org.apache.plc4x.java.can.listener;
 
-import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
 
 public interface Callback {
-    void receive(SocketCANFrame frame);
+    void receive(CANOpenFrame frame);
 }
 

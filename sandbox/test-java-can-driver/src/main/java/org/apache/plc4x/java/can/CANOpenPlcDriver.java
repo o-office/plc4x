@@ -29,6 +29,8 @@ import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
 import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.connection.SingleProtocolStackConfigurer;
+import org.apache.plc4x.java.spi.optimizer.BaseOptimizer;
+import org.apache.plc4x.java.spi.optimizer.SingleFieldOptimizer;
 
 import java.util.function.ToIntFunction;
 
@@ -74,6 +76,11 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<CANOpenFrame> {
     @Override
     protected CANOpenFieldHandler getFieldHandler() {
         return new CANOpenFieldHandler();
+    }
+
+    @Override
+    protected BaseOptimizer getOptimizer() {
+        return new SingleFieldOptimizer();
     }
 
     @Override

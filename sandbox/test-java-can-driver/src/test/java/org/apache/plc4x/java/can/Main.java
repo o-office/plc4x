@@ -23,6 +23,7 @@ import org.apache.plc4x.java.api.PlcConnection;
 import org.apache.plc4x.java.api.messages.PlcReadRequest;
 import org.apache.plc4x.java.api.messages.PlcReadResponse;
 import org.apache.plc4x.java.api.messages.PlcWriteResponse;
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
 import org.apache.plc4x.java.can.context.CANOpenDriverContext;
 import org.apache.plc4x.java.can.listener.Callback;
 import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
@@ -40,7 +41,7 @@ public class Main {
 
         CANOpenDriverContext.CALLBACK.addCallback(new Callback() {
             @Override
-            public void receive(SocketCANFrame frame) {
+            public void receive(CANOpenFrame frame) {
                 //System.err.println("Received frame " + frame);
             }
         });

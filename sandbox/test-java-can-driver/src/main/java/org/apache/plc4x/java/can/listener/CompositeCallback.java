@@ -1,5 +1,6 @@
 package org.apache.plc4x.java.can.listener;
 
+import org.apache.plc4x.java.can.canopen.CANOpenFrame;
 import org.apache.plc4x.java.socketcan.readwrite.SocketCANFrame;
 
 import java.util.List;
@@ -10,7 +11,7 @@ public class CompositeCallback implements Callback {
     private List<Callback> callbacks = new CopyOnWriteArrayList<>();
 
     @Override
-    public void receive(SocketCANFrame frame) {
+    public void receive(CANOpenFrame frame) {
         callbacks.forEach(callback -> callback.receive(frame));
     }
 
